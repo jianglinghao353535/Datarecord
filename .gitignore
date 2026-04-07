@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+*.pdb
+*.db
+TestResults/
+packages/
+artifacts/
+*.nupkg
+AppPackages/
+BundleArtifacts/
+%LocalAppData%/Datarecord/

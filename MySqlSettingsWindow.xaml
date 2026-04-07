@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window x:Class="Datarecord.MySqlSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="資料庫設定"
+        Width="560"
+        Height="620"
+        MinWidth="520"
+        MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        Background="#FF0F172A">
+    <Grid Margin="16">
+        <Border Padding="16"
+                CornerRadius="14"
+                Background="#3323344A"
+                BorderBrush="#66738AA6"
+                BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="12" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="12" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <TextBlock FontSize="22"
+                               FontWeight="SemiBold"
+                               Foreground="#FFE2E8F0"
+                               Text="MySQL 資料庫設定" />
+                    <TextBlock Margin="0,6,0,0"
+                               Foreground="#FF94A3B8"
+                               FontSize="12"
+                               Text="可直接提供給客戶設定主機、帳號與密碼。" />
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <CheckBox Margin="0,0,0,12"
+                                  Foreground="#FFE2E8F0"
+                                  IsChecked="{Binding Enabled}"
+                                  Content="啟用 MySQL 儲存" />
+
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="主機位址" />
+                        <TextBox Margin="0,4,0,10"
+                                 Style="{StaticResource FieldTextBoxStyle}"
+                                 Text="{Binding Server, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="連接埠" />
+                        <TextBox Margin="0,4,0,10"
+                                 Style="{StaticResource FieldTextBoxStyle}"
+                                 Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="資料庫名稱" />
+                        <TextBox Margin="0,4,0,10"
+                                 Style="{StaticResource FieldTextBoxStyle}"
+                                 Text="{Binding Database, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="使用者帳號" />
+                        <TextBox Margin="0,4,0,10"
+                                 Style="{StaticResource FieldTextBoxStyle}"
+                                 Text="{Binding UserId, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="密碼" />
+                        <TextBox Margin="0,4,0,10"
+                                 Style="{StaticResource FieldTextBoxStyle}"
+                                 Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="字元集" />
+                        <TextBox Margin="0,4,0,10"
+                                 Style="{StaticResource FieldTextBoxStyle}"
+                                 Text="{Binding Charset, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <Border Padding="10"
+                                Background="#1A334155"
+                                BorderBrush="#44627387"
+                                BorderThickness="1"
+                                CornerRadius="10">
+                            <TextBlock Foreground="#FFCBD5E1"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding StatusText}" />
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <Grid Grid.Row="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="8" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right">
+                        <Button Width="120"
+                                Height="38"
+                                Margin="0,0,8,0"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Click="InitializeDatabaseButton_OnClick"
+                                Content="初始化資料庫" />
+                        <Button Width="100"
+                                Height="38"
+                                Margin="0,0,8,0"
+                                Style="{StaticResource DangerButtonStyle}"
+                                Click="ClearHistoryButton_OnClick"
+                                Content="清空歷史" />
+                        <Button Width="100"
+                                Height="38"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Click="TestConnectionButton_OnClick"
+                                Content="測試連線" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right">
+                        <Button Width="100"
+                                Height="38"
+                                Margin="0,0,8,0"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Click="SaveButton_OnClick"
+                                Content="儲存設定" />
+                        <Button Width="100"
+                                Height="38"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Click="CloseButton_OnClick"
+                                Content="關閉" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
