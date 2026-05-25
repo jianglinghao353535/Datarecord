@@ -8,10 +8,10 @@ namespace Datarecord.Models
 
         public double ProductionWeight { get; set; }
 
-        public string ProductionStatus { get; set; } = "´ý™C";
+        public double ReportWeight { get; set; }
 
         public double CurrentDiameter { get; set; }
 
-        public double[] Temperatures { get; set; } = new double[8];
+        public bool IsRunningSignalOn { get; set; }
     }
 }

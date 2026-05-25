@@ -19,19 +19,28 @@ namespace Datarecord.ViewModels
         private bool _isSelected;
         private bool _isPlcSynchronizing;
         private bool _isManualReconnectInProgress;
-        private string _plcStatusText = "等待啟動後自動連線 PLC，連線成功後會自動開始變數歸檔。";
+        private string _plcStatusText = "Waiting to auto-connect to PLC after startup. Archiving starts automatically after a successful connection.";
         private double _productionSpeed;
         private double _productionLength;
         private double _productionWeight;
-        private string _productionStatus;
         private double _currentDiameter;
-        private double[] _currentTemperatures;
+        private bool _useManualYAxis;
+        private double _manualYAxisMin;
+        private double _manualYAxisMax = 300;
+        private double _lengthYAxisMin;
+        private double _lengthYAxisMax = 10000;
+        private double _diameterYAxisMin;
+        private double _diameterYAxisMax = 5;
+        private double _speedYAxisMin;
+        private double _speedYAxisMax = 2000;
+        private double _tensionYAxisMin;
+        private double _tensionYAxisMax = 200;
         private string _plcAddressProductionSpeed;
         private string _plcAddressProductionLength;
         private string _plcAddressProductionWeight;
-        private string _plcAddressProductionStatus;
+        private string _plcAddressWeight;
         private string _plcAddressDiameter;
-        private string[] _plcAddressTemperatureZones;
+        private string _plcAddressRuningSignal;
 
         public MachineItemViewModel(MachineItemModel model)
         {
@@ -47,23 +56,30 @@ namespace Datarecord.ViewModels
             _productionSpeed = model.ProductionSpeed;
             _productionLength = model.ProductionLength;
             _productionWeight = model.ProductionWeight;
-            _productionStatus = string.IsNullOrWhiteSpace(model.ProductionStatus) ? "待機" : model.ProductionStatus;
             _currentDiameter = model.CurrentDiameter;
-            _currentTemperatures = NormalizeTemperatures(model.CurrentTemperatures);
+            _useManualYAxis = model.UseManualYAxis;
+            _manualYAxisMin = model.ManualYAxisMin;
+            _manualYAxisMax = model.ManualYAxisMax;
+            _lengthYAxisMin = model.LengthYAxisMin;
+            _lengthYAxisMax = model.LengthYAxisMax;
+            _diameterYAxisMin = model.DiameterYAxisMin;
+            _diameterYAxisMax = model.DiameterYAxisMax;
+            _speedYAxisMin = model.SpeedYAxisMin;
+            _speedYAxisMax = model.SpeedYAxisMax;
+            _tensionYAxisMin = model.TensionYAxisMin;
+            _tensionYAxisMax = model.TensionYAxisMax;
 
             _plcAddressProductionSpeed = model.PlcAddressProductionSpeed;
             _plcAddressProductionLength = model.PlcAddressProductionLength;
             _plcAddressProductionWeight = model.PlcAddressProductionWeight;
-            _plcAddressProductionStatus = model.PlcAddressProductionStatus;
+            _plcAddressWeight = string.IsNullOrWhiteSpace(model.PlcAddressWeight)
+                ? model.PlcAddressProductionWeight
+                : model.PlcAddressWeight;
             _plcAddressDiameter = model.PlcAddressDiameter;
-            _plcAddressTemperatureZones = NormalizeAddressArray(model.PlcAddressTemperatureZones);
+            _plcAddressRuningSignal = model.PlcAddressRuningSignal;
 
             ApplyAddressTemplateForPlcType(force: false);
             ApplyDefaultPortForPlcType(force: _port <= 0);
-
-            PlcTemperatureAddresses = new ObservableCollection<PlcTemperatureAddressViewModel>(
-                Enumerable.Range(0, 8)
-                    .Select(i => new PlcTemperatureAddressViewModel(i, _plcAddressTemperatureZones[i], OnTemperatureAddressChanged)));
 
             TrendRecords = new ObservableCollection<MachineTrendRecordModel>(
                 model.TrendRecords?.Where(x => x is not null) ?? Enumerable.Empty<MachineTrendRecordModel>());
@@ -186,16 +202,76 @@ namespace Datarecord.ViewModels
             set => SetProperty(ref _productionWeight, value);
         }
 
-        public string ProductionStatus
-        {
-            get => _productionStatus;
-            set => SetProperty(ref _productionStatus, value);
-        }
-
         public double CurrentDiameter
         {
             get => _currentDiameter;
             set => SetProperty(ref _currentDiameter, value);
+        }
+
+        public bool UseManualYAxis
+        {
+            get => _useManualYAxis;
+            set => SetProperty(ref _useManualYAxis, value);
+        }
+
+        public double ManualYAxisMin
+        {
+            get => _manualYAxisMin;
+            set => SetProperty(ref _manualYAxisMin, value);
+        }
+
+        public double ManualYAxisMax
+        {
+            get => _manualYAxisMax;
+            set => SetProperty(ref _manualYAxisMax, value);
+        }
+
+        public double LengthYAxisMin
+        {
+            get => _lengthYAxisMin;
+            set => SetProperty(ref _lengthYAxisMin, value);
+        }
+
+        public double LengthYAxisMax
+        {
+            get => _lengthYAxisMax;
+            set => SetProperty(ref _lengthYAxisMax, value);
+        }
+
+        public double DiameterYAxisMin
+        {
+            get => _diameterYAxisMin;
+            set => SetProperty(ref _diameterYAxisMin, value);
+        }
+
+        public double DiameterYAxisMax
+        {
+            get => _diameterYAxisMax;
+            set => SetProperty(ref _diameterYAxisMax, value);
+        }
+
+        public double SpeedYAxisMin
+        {
+            get => _speedYAxisMin;
+            set => SetProperty(ref _speedYAxisMin, value);
+        }
+
+        public double SpeedYAxisMax
+        {
+            get => _speedYAxisMax;
+            set => SetProperty(ref _speedYAxisMax, value);
+        }
+
+        public double TensionYAxisMin
+        {
+            get => _tensionYAxisMin;
+            set => SetProperty(ref _tensionYAxisMin, value);
+        }
+
+        public double TensionYAxisMax
+        {
+            get => _tensionYAxisMax;
+            set => SetProperty(ref _tensionYAxisMax, value);
         }
 
         public string PlcAddressProductionSpeed
@@ -216,10 +292,10 @@ namespace Datarecord.ViewModels
             set => SetProperty(ref _plcAddressProductionWeight, value);
         }
 
-        public string PlcAddressProductionStatus
+        public string PlcAddressWeight
         {
-            get => _plcAddressProductionStatus;
-            set => SetProperty(ref _plcAddressProductionStatus, value);
+            get => _plcAddressWeight;
+            set => SetProperty(ref _plcAddressWeight, value);
         }
 
         public string PlcAddressDiameter
@@ -228,33 +304,31 @@ namespace Datarecord.ViewModels
             set => SetProperty(ref _plcAddressDiameter, value);
         }
 
-        public double[] CurrentTemperatures
+        public string PlcAddressRuningSignal
         {
-            get => _currentTemperatures;
-            set => SetProperty(ref _currentTemperatures, NormalizeTemperatures(value));
+            get => _plcAddressRuningSignal;
+            set => SetProperty(ref _plcAddressRuningSignal, value);
         }
-
-        public ObservableCollection<PlcTemperatureAddressViewModel> PlcTemperatureAddresses { get; }
 
         public ObservableCollection<MachineTrendRecordModel> TrendRecords { get; }
 
         public string PlcTypeText => PlcType switch
         {
-            PlcType.SiemensS7 => "西門子 S7",
-            PlcType.DeltaModbusTcp => "台達 Modbus TCP",
+            PlcType.SiemensS7 => "Siemens S7",
+            PlcType.DeltaModbusTcp => "Delta Modbus TCP",
             _ => PlcType.ToString()
         };
 
         public string PlcAddressHint => PlcType switch
         {
-            PlcType.SiemensS7 => "地址格式：MD100 / MW112 / M0.0；V 記憶體可輸入 VD100 / VW112 / VB200 / V100.0（會轉為 DB0 對應位址）",
-            PlcType.DeltaModbusTcp => "建議格式：D100 / M0（台達常用 D 暫存器與 M 位元）",
-            _ => "請依 PLC 驅動支援格式填寫"
+            PlcType.SiemensS7 => "Address format: MD100 / MW112 / M0.0; V memory supports VD100 / VW112 / VB200 / V100.0 (auto-mapped to DB address)",
+            PlcType.DeltaModbusTcp => "Recommended format: D100 / M0 (common Delta registers and bits)",
+            _ => "Please use an address format supported by your PLC driver"
         };
 
-        public string SampleText => $"採樣週期：{SampleIntervalMs} ms";
+        public string SampleText => $"Sample interval: {SampleIntervalMs} ms";
 
-        public string EnabledText => IsEnabled ? "運行中" : "已停機";
+        public string EnabledText => IsEnabled ? "Running" : "Stopped";
 
         public MachineItemModel ToModel()
         {
@@ -272,15 +346,24 @@ namespace Datarecord.ViewModels
                 ProductionSpeed = ProductionSpeed,
                 ProductionLength = ProductionLength,
                 ProductionWeight = ProductionWeight,
-                ProductionStatus = ProductionStatus,
                 CurrentDiameter = CurrentDiameter,
+                UseManualYAxis = UseManualYAxis,
+                ManualYAxisMin = ManualYAxisMin,
+                ManualYAxisMax = ManualYAxisMax,
+                LengthYAxisMin = LengthYAxisMin,
+                LengthYAxisMax = LengthYAxisMax,
+                DiameterYAxisMin = DiameterYAxisMin,
+                DiameterYAxisMax = DiameterYAxisMax,
+                SpeedYAxisMin = SpeedYAxisMin,
+                SpeedYAxisMax = SpeedYAxisMax,
+                TensionYAxisMin = TensionYAxisMin,
+                TensionYAxisMax = TensionYAxisMax,
                 PlcAddressProductionSpeed = PlcAddressProductionSpeed,
                 PlcAddressProductionLength = PlcAddressProductionLength,
                 PlcAddressProductionWeight = PlcAddressProductionWeight,
-                PlcAddressProductionStatus = PlcAddressProductionStatus,
+                PlcAddressWeight = PlcAddressWeight,
                 PlcAddressDiameter = PlcAddressDiameter,
-                PlcAddressTemperatureZones = PlcTemperatureAddresses.Select(x => x.Address).ToArray(),
-                CurrentTemperatures = NormalizeTemperatures(CurrentTemperatures),
+                PlcAddressRuningSignal = PlcAddressRuningSignal,
                 TrendRecords = TrendRecords.ToList()
             };
         }
@@ -290,9 +373,7 @@ namespace Datarecord.ViewModels
             ProductionSpeed = snapshot.ProductionSpeed;
             ProductionLength = snapshot.ProductionLength;
             ProductionWeight = snapshot.ProductionWeight;
-            ProductionStatus = snapshot.ProductionStatus;
             CurrentDiameter = snapshot.CurrentDiameter;
-            CurrentTemperatures = NormalizeTemperatures(snapshot.Temperatures);
         }
 
         public void AddTrendRecord(DateTime timestamp)
@@ -301,14 +382,10 @@ namespace Datarecord.ViewModels
             {
                 Timestamp = timestamp,
                 Speed = ProductionSpeed,
+                Length = ProductionLength,
                 Diameter = CurrentDiameter,
-                TemperatureZones = NormalizeTemperatures(CurrentTemperatures)
+                Tension = ProductionWeight
             });
-        }
-
-        private void OnTemperatureAddressChanged(int index, string address)
-        {
-            _plcAddressTemperatureZones[index] = address;
         }
 
         private void ApplyAddressTemplateForPlcType(bool force)
@@ -319,34 +396,19 @@ namespace Datarecord.ViewModels
                     AssignIfNeeded(ref _plcAddressProductionSpeed, "MD100", force);
                     AssignIfNeeded(ref _plcAddressProductionLength, "MD104", force);
                     AssignIfNeeded(ref _plcAddressProductionWeight, "MD108", force);
-                    AssignIfNeeded(ref _plcAddressProductionStatus, "MD112", force);
-                    AssignIfNeeded(ref _plcAddressDiameter, "MD116", force);
-                    for (var i = 0; i < 8; i++)
-                    {
-                        AssignTempIfNeeded(i, $"MD{200 + (i * 4)}", force);
-                    }
+                    AssignIfNeeded(ref _plcAddressWeight, "MD108", force);
+                    AssignIfNeeded(ref _plcAddressDiameter, "MD112", force);
+                    AssignIfNeeded(ref _plcAddressRuningSignal, "M0.0", force);
                     break;
                 case PlcType.DeltaModbusTcp:
+                case PlcType.InovanceModbusTcp:
                     AssignIfNeeded(ref _plcAddressProductionSpeed, "D100", force);
                     AssignIfNeeded(ref _plcAddressProductionLength, "D102", force);
                     AssignIfNeeded(ref _plcAddressProductionWeight, "D104", force);
-                    AssignIfNeeded(ref _plcAddressProductionStatus, "D106", force);
-                    AssignIfNeeded(ref _plcAddressDiameter, "D108", force);
-                    for (var i = 0; i < 8; i++)
-                    {
-                        AssignTempIfNeeded(i, $"D{200 + (i * 2)}", force);
-                    }
+                    AssignIfNeeded(ref _plcAddressWeight, "D104", force);
+                    AssignIfNeeded(ref _plcAddressDiameter, "D106", force);
+                    AssignIfNeeded(ref _plcAddressRuningSignal, "M0", force);
                     break;
-            }
-
-            if (PlcTemperatureAddresses is null)
-            {
-                return;
-            }
-
-            for (var i = 0; i < PlcTemperatureAddresses.Count; i++)
-            {
-                PlcTemperatureAddresses[i].Address = _plcAddressTemperatureZones[i];
             }
         }
 
@@ -356,6 +418,7 @@ namespace Datarecord.ViewModels
             {
                 PlcType.SiemensS7 => 102,
                 PlcType.DeltaModbusTcp => 502,
+                PlcType.InovanceModbusTcp => 502,
                 _ => 0
             };
 
@@ -365,82 +428,11 @@ namespace Datarecord.ViewModels
             }
         }
 
-        private void AssignTempIfNeeded(int index, string value, bool force)
-        {
-            if (force || string.IsNullOrWhiteSpace(_plcAddressTemperatureZones[index]))
-            {
-                _plcAddressTemperatureZones[index] = value;
-            }
-        }
-
         private static void AssignIfNeeded(ref string target, string value, bool force)
         {
             if (force || string.IsNullOrWhiteSpace(target))
             {
                 target = value;
-            }
-        }
-
-        private static double[] NormalizeTemperatures(double[]? source)
-        {
-            var values = new double[8];
-            if (source is null)
-            {
-                return values;
-            }
-
-            for (var i = 0; i < values.Length && i < source.Length; i++)
-            {
-                values[i] = source[i];
-            }
-
-            return values;
-        }
-
-        private static string[] NormalizeAddressArray(string[]? source)
-        {
-            var values = new string[8];
-            if (source is null)
-            {
-                return values;
-            }
-
-            for (var i = 0; i < values.Length && i < source.Length; i++)
-            {
-                values[i] = source[i] ?? string.Empty;
-            }
-
-            return values;
-        }
-    }
-
-    public sealed class PlcTemperatureAddressViewModel : ViewModelBase
-    {
-        private readonly Action<int, string> _onAddressChanged;
-        private string _address;
-
-        public PlcTemperatureAddressViewModel(int zoneIndex, string address, Action<int, string> onAddressChanged)
-        {
-            ZoneIndex = zoneIndex;
-            _address = address;
-            _onAddressChanged = onAddressChanged;
-        }
-
-        public int ZoneIndex { get; }
-
-        public string ZoneName => $"溫區 {ZoneIndex + 1}";
-
-        public string Address
-        {
-            get => _address;
-            set
-            {
-                if (!SetProperty(ref _address, value))
-                {
-                    return;
-                }
-
-                _onAddressChanged(ZoneIndex, value);
             }
         }
     }

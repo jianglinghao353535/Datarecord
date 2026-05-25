@@ -21,8 +21,9 @@ namespace Datarecord.ViewModels
 
         private readonly IMachineStorageService _storageService;
         private readonly RelayCommand _deleteSelectedCommand;
+        private bool _useTraditionalChinese;
         private MachineItemViewModel? _selectedMachine;
-        private string _statusText = "將左側機台拖到中間畫布即可新增。";
+        private string _statusText = "Drag a machine card from the left panel to the canvas to add a machine.";
         private double _designSurfaceWidth = (LayoutPadding * 2) + MachineCardWidth;
         private double _designSurfaceHeight = MinDesignSurfaceHeight;
 
@@ -34,6 +35,7 @@ namespace Datarecord.ViewModels
 
             SaveCommand = new RelayCommand(SaveLayout);
             LoadCommand = new RelayCommand(LoadLayout);
+            ToggleLanguageCommand = new RelayCommand(ToggleLanguage);
             _deleteSelectedCommand = new RelayCommand(DeleteSelectedMachine, () => SelectedMachine is not null);
             DeleteSelectedCommand = _deleteSelectedCommand;
 
@@ -49,6 +51,58 @@ namespace Datarecord.ViewModels
         public ICommand LoadCommand { get; }
 
         public ICommand DeleteSelectedCommand { get; }
+
+        public ICommand ToggleLanguageCommand { get; }
+
+        public bool UseTraditionalChinese => _useTraditionalChinese;
+
+        public string LanguageToggleText => _useTraditionalChinese ? "English" : "中文";
+
+        public string WindowTitleText => "Wire Drawing Machine Monitoring";
+
+        public string HeaderTitleText => "Wire Drawing Machine Monitoring";
+
+        public string ReloadText => "Reload";
+
+        public string SaveLayoutText => "Save Layout";
+
+        public string ReportScreenText => "Open Report";
+
+        public string DatabaseSettingsText => "Database Settings";
+
+        public string DeleteMachineText => "Delete Machine";
+
+        public string ToolboxTitleText => "Toolbox";
+
+        public string ToolboxHintText => "Drag the machine card to the center canvas to add a machine.";
+
+        public string EnamelingMachineText => "Wire Drawing Machine";
+
+        public string ToolboxCardHintText => "After dropping on the canvas, set PLC type, IP, and sample interval.";
+
+        public string EnterMachineText => "Open Machine View";
+
+        public string MachinePropertyTitleText => "Machine Properties";
+
+        public string MachinePropertyHintText => "Select a machine on the canvas to edit its settings.";
+
+        public string MachineNameLabelText => "Machine Name";
+
+        public string IpAddressLabelText => "IP Address";
+
+        public string PlcTypeLabelText => "PLC Type";
+
+        public string PortLabelText => "Port";
+
+        public string SampleIntervalLabelText => "Sample Interval (ms)";
+
+        public string ReconnectPlcText => "Reconnect PLC";
+
+        public string EnableMachineText => "Enable Machine";
+
+        public string SuggestionTitleText => "Suggestion";
+
+        public string SuggestionBodyText => "Siemens usually uses port 102; Delta/Inovance Modbus TCP usually uses port 502.";
 
         public MachineItemViewModel? SelectedMachine
         {
@@ -94,7 +148,7 @@ namespace Datarecord.ViewModels
             var machine = new MachineItemViewModel(new MachineItemModel
             {
                 Id = Guid.NewGuid(),
-                Name = $"機台 {machineIndex}",
+                Name = $"Machine {machineIndex}",
                 IpAddress = "192.168.0.1",
                 PlcType = PlcType.SiemensS7,
                 Port = 102,
@@ -105,15 +159,26 @@ namespace Datarecord.ViewModels
                 ProductionSpeed = 0,
                 ProductionLength = 0,
                 ProductionWeight = 0,
-                ProductionStatus = "待機",
                 CurrentDiameter = 0,
-                CurrentTemperatures = new double[8]
+                PlcAddressWeight = "MD108",
+                PlcAddressRuningSignal = "M0.0",
+                UseManualYAxis = false,
+                ManualYAxisMin = 0,
+                ManualYAxisMax = 2000,
+                LengthYAxisMin = 0,
+                LengthYAxisMax = 10000,
+                DiameterYAxisMin = 0,
+                DiameterYAxisMax = 5,
+                SpeedYAxisMin = 0,
+                SpeedYAxisMax = 2000,
+                TensionYAxisMin = 0,
+                TensionYAxisMax = 200
             });
 
             Machines.Add(machine);
             ArrangeMachinesInCascade(surfaceWidth);
             SelectMachine(machine);
-            StatusText = $"已新增 {machine.Name}。";
+            StatusText = $"Added {machine.Name}.";
         }
 
         public void ReorderMachine(MachineItemViewModel machine, double surfaceWidth, double pointerX, double pointerY)
@@ -213,18 +278,18 @@ namespace Datarecord.ViewModels
             SelectedMachine = machine;
             if (machine is null)
             {
-                StatusText = "目前未選取機台。";
+                StatusText = "No machine selected.";
             }
             else
             {
-                StatusText = $"目前選取：{machine.Name}。";
+                StatusText = $"Selected: {machine.Name}.";
             }
         }
 
         public void SaveLayout()
         {
             _storageService.Save(Machines.Select(x => x.ToModel()));
-            StatusText = $"佈局已儲存，共 {Machines.Count} 台機台。";
+            StatusText = $"Layout saved. Total machines: {Machines.Count}.";
         }
 
         private void LoadLayout()
@@ -238,8 +303,8 @@ namespace Datarecord.ViewModels
 
             SelectMachine(Machines.FirstOrDefault());
             StatusText = Machines.Count == 0
-                ? "目前沒有機台，請先新增。"
-                : $"已載入 {Machines.Count} 台機台。";
+                ? "No machines found. Please add a machine first."
+                : $"Loaded {Machines.Count} machine(s).";
         }
 
         private void DeleteSelectedMachine()
@@ -251,8 +316,58 @@ namespace Datarecord.ViewModels
 
             var machineName = SelectedMachine.Name;
             Machines.Remove(SelectedMachine);
+            try
+            {
+                _storageService.Save(Machines.Select(x => x.ToModel()));
+            }
+            catch
+            {
+            }
             SelectMachine(Machines.FirstOrDefault());
-            StatusText = $"已刪除 {machineName}。";
+            StatusText = $"Deleted {machineName}.";
+        }
+
+        private void ToggleLanguage()
+        {
+            _useTraditionalChinese = !_useTraditionalChinese;
+            OnPropertyChanged(nameof(LanguageToggleText));
+            OnPropertyChanged(nameof(WindowTitleText));
+            OnPropertyChanged(nameof(HeaderTitleText));
+            OnPropertyChanged(nameof(ReloadText));
+            OnPropertyChanged(nameof(SaveLayoutText));
+            OnPropertyChanged(nameof(ReportScreenText));
+            OnPropertyChanged(nameof(DatabaseSettingsText));
+            OnPropertyChanged(nameof(DeleteMachineText));
+            OnPropertyChanged(nameof(ToolboxTitleText));
+            OnPropertyChanged(nameof(ToolboxHintText));
+            OnPropertyChanged(nameof(EnamelingMachineText));
+            OnPropertyChanged(nameof(ToolboxCardHintText));
+            OnPropertyChanged(nameof(EnterMachineText));
+            OnPropertyChanged(nameof(MachinePropertyTitleText));
+            OnPropertyChanged(nameof(MachinePropertyHintText));
+            OnPropertyChanged(nameof(MachineNameLabelText));
+            OnPropertyChanged(nameof(IpAddressLabelText));
+            OnPropertyChanged(nameof(PlcTypeLabelText));
+            OnPropertyChanged(nameof(PortLabelText));
+            OnPropertyChanged(nameof(SampleIntervalLabelText));
+            OnPropertyChanged(nameof(ReconnectPlcText));
+            OnPropertyChanged(nameof(EnableMachineText));
+            OnPropertyChanged(nameof(SuggestionTitleText));
+            OnPropertyChanged(nameof(SuggestionBodyText));
+
+            if (SelectedMachine is null)
+            {
+                StatusText = "No machine selected.";
+            }
+            else
+            {
+                StatusText = $"Selected: {SelectedMachine.Name}.";
+            }
+        }
+
+        private string GetLocalized(string simplified, string traditional)
+        {
+            return _useTraditionalChinese ? traditional : simplified;
         }
 
         public void CommitMachineMove(MachineItemViewModel machine, double surfaceWidth)

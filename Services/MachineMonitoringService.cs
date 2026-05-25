@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
@@ -17,6 +19,7 @@ namespace Datarecord.Services
         private static readonly TimeSpan AutoReconnectDelay = TimeSpan.FromSeconds(5);
         private readonly IPlcIntegrationService _plcIntegrationService;
         private readonly IMachineStorageService _storageService;
+        private readonly IProductionReportService _productionReportService;
         private readonly Dispatcher _dispatcher;
         private readonly Dictionary<Guid, MachineMonitorState> _states = [];
         private readonly SemaphoreSlim _archiveSemaphore = new(1, 1);
@@ -28,10 +31,12 @@ namespace Datarecord.Services
         public MachineMonitoringService(
             IPlcIntegrationService plcIntegrationService,
             IMachineStorageService storageService,
+            IProductionReportService productionReportService,
             Dispatcher dispatcher)
         {
             _plcIntegrationService = plcIntegrationService;
             _storageService = storageService;
+            _productionReportService = productionReportService;
             _dispatcher = dispatcher;
         }
 
@@ -65,7 +70,7 @@ namespace Datarecord.Services
             {
                 machine.IsManualReconnectInProgress = true;
                 machine.IsPlcSynchronizing = true;
-                machine.PlcStatusText = "正在手動重新連線 PLC…";
+                machine.PlcStatusText = "Reconnecting to PLC...";
             });
 
             try
@@ -129,7 +134,7 @@ namespace Datarecord.Services
                 foreach (var machine in e.OldItems.OfType<MachineItemViewModel>())
                 {
                     machine.PropertyChanged -= MachineOnPropertyChanged;
-                    StopMonitor(machine, "PLC 監控已停止。");
+                    StopMonitor(machine, "PLC monitoring stopped.");
                 }
             }
 
@@ -163,7 +168,7 @@ namespace Datarecord.Services
                 }
                 else
                 {
-                    StopMonitor(machine, "機台已停用，PLC 監控已停止。");
+                    StopMonitor(machine, "Machine disabled. PLC monitoring stopped.");
                 }
 
                 ScheduleArchiveSave();
@@ -178,8 +183,9 @@ namespace Datarecord.Services
                 or nameof(MachineItemViewModel.PlcAddressProductionSpeed)
                 or nameof(MachineItemViewModel.PlcAddressProductionLength)
                 or nameof(MachineItemViewModel.PlcAddressProductionWeight)
-                or nameof(MachineItemViewModel.PlcAddressProductionStatus)
-                or nameof(MachineItemViewModel.PlcAddressDiameter))
+                or nameof(MachineItemViewModel.PlcAddressWeight)
+                or nameof(MachineItemViewModel.PlcAddressDiameter)
+                or nameof(MachineItemViewModel.PlcAddressRuningSignal))
             {
                 ResetMonitorAfterConfigurationChanged(machine);
                 ScheduleArchiveSave();
@@ -231,6 +237,8 @@ namespace Datarecord.Services
                 previousTask = state.MonitorTask;
                 state.CancellationTokenSource = null;
                 state.MonitorTask = null;
+                state.LastRunningSignal = null;
+                state.RunStartTime = null;
             }
 
             previousCts?.Cancel();
@@ -268,35 +276,60 @@ namespace Datarecord.Services
 
         private async Task RunMonitorLoopAsync(MachineItemViewModel machine, CancellationToken cancellationToken, bool manualReconnect)
         {
-            try
-            {
-                await SyncMachineOnceAsync(
-                    machine,
-                    manualReconnect
-                        ? "正在重新連線 PLC，成功後將自動開始變數歸檔…"
-                        : "正在自動連線 PLC，成功後將自動開始變數歸檔…",
-                    cancellationToken);
+            var startStatusText = manualReconnect
+                ? "Manual PLC reconnect succeeded. Archiving resumed."
+                : "PLC connected successfully. Archiving started.";
 
-                while (!cancellationToken.IsCancellationRequested && machine.IsEnabled)
+            while (!cancellationToken.IsCancellationRequested && machine.IsEnabled)
+            {
+                try
                 {
+                    await SyncMachineOnceAsync(machine, startStatusText, cancellationToken);
+                    startStatusText = null;
+
                     var delayMs = Math.Max(200, machine.SampleIntervalMs);
                     await Task.Delay(delayMs, cancellationToken);
-                    await SyncMachineOnceAsync(machine, null, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (TimeoutException)
+                {
+                    await HandleTransientConnectionFailureAsync(machine, cancellationToken, "PLC timeout. Retrying...");
+                }
+                catch (IOException)
+                {
+                    await HandleTransientConnectionFailureAsync(machine, cancellationToken, "PLC I/O failed. Retrying...");
+                }
+                catch (SocketException)
+                {
+                    await HandleTransientConnectionFailureAsync(machine, cancellationToken, "PLC connection failed. Retrying...");
+                }
+                catch (Exception ex)
+                {
+                    ClearMonitorState(machine.Id);
+
+                    await _dispatcher.InvokeAsync(() =>
+                    {
+                        machine.IsPlcSynchronizing = false;
+                        machine.PlcStatusText = $"PLC synchronization failed: {ex.Message}. Archiving paused. Please reconnect PLC.";
+                    });
+
+                    break;
                 }
             }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                ClearMonitorState(machine.Id);
+        }
 
-                await _dispatcher.InvokeAsync(() =>
-                {
-                    machine.IsPlcSynchronizing = false;
-                    machine.PlcStatusText = $"PLC 連線失敗或已逾時：{ex.Message}。輪詢已停止，請手動按下重新連線 PLC。";
-                });
-            }
+        private async Task HandleTransientConnectionFailureAsync(MachineItemViewModel machine, CancellationToken cancellationToken, string statusText)
+        {
+            await _dispatcher.InvokeAsync(() =>
+            {
+                machine.IsPlcSynchronizing = false;
+                machine.PlcStatusText = statusText;
+            });
+
+            await Task.Delay(AutoReconnectDelay, cancellationToken);
         }
 
         private async Task SyncMachineOnceAsync(MachineItemViewModel machine, string? startStatusText, CancellationToken cancellationToken)
@@ -329,9 +362,11 @@ namespace Datarecord.Services
 
             await _dispatcher.InvokeAsync(() =>
             {
+                var now = DateTime.Now;
                 machine.ApplySnapshot(plcSnapshot);
-                machine.AddTrendRecord(DateTime.Now);
-                machine.PlcStatusText = $"PLC 已連線，變數歸檔中，最後同步：{DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                machine.AddTrendRecord(now);
+                ProcessRunningSignalTransition(machine, plcSnapshot, now);
+                machine.PlcStatusText = $"PLC synchronization running. Last update: {now:yyyy-MM-dd HH:mm:ss}";
                 machine.IsPlcSynchronizing = false;
             });
 
@@ -441,7 +476,7 @@ namespace Datarecord.Services
             _ = _dispatcher.InvokeAsync(() =>
             {
                 machine.IsPlcSynchronizing = false;
-                machine.PlcStatusText = "PLC 參數已變更，請手動按下重新連線 PLC。";
+                machine.PlcStatusText = "PLC parameters have changed. Please reconnect PLC.";
             });
         }
 
@@ -450,6 +485,61 @@ namespace Datarecord.Services
             public CancellationTokenSource? CancellationTokenSource { get; set; }
 
             public Task? MonitorTask { get; set; }
+
+            public bool? LastRunningSignal { get; set; }
+
+            public DateTime? RunStartTime { get; set; }
+        }
+
+        private void ProcessRunningSignalTransition(MachineItemViewModel machine, PlcRealtimeSnapshotModel plcSnapshot, DateTime sampleTime)
+        {
+            MachineMonitorState? state;
+            lock (_syncRoot)
+            {
+                _states.TryGetValue(machine.Id, out state);
+            }
+
+            if (state is null)
+            {
+                return;
+            }
+
+            var previousSignal = state.LastRunningSignal;
+            var currentSignal = plcSnapshot.IsRunningSignalOn;
+
+            if (previousSignal is false && currentSignal)
+            {
+                state.RunStartTime = sampleTime;
+            }
+            else if (previousSignal is true && !currentSignal && state.RunStartTime.HasValue)
+            {
+                var startTime = state.RunStartTime.Value;
+                var endTime = sampleTime;
+                if (endTime > startTime)
+                {
+                    var length = Math.Max(0, plcSnapshot.ProductionLength);
+                    var weight = Math.Max(0, plcSnapshot.ReportWeight);
+                    var durationSeconds = (endTime - startTime).TotalSeconds;
+                    var averageSpeed = durationSeconds > 0 ? length / durationSeconds : 0;
+
+                    var record = new ProductionReportRecordModel
+                    {
+                        MachineId = machine.Id,
+                        MachineName = machine.Name,
+                        StartTime = startTime,
+                        EndTime = endTime,
+                        Length = length,
+                        Weight = weight,
+                        AverageSpeed = averageSpeed
+                    };
+
+                    _ = Task.Run(() => _productionReportService.SaveRunReport(record));
+                }
+
+                state.RunStartTime = null;
+            }
+
+            state.LastRunningSignal = currentSignal;
         }
     }
 }

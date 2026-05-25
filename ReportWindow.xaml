@@ -1,0 +1,314 @@
+<Window x:Class="Datarecord.ReportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Report"
+        WindowState="Maximized"
+        Background="#FF0F172A" Cursor="">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="16" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <DockPanel LastChildFill="False">
+            <TextBlock FontSize="28"
+                       FontWeight="SemiBold"
+                       Foreground="#FFE2E8F0"
+                       Text="Production Report" />
+            <Button DockPanel.Dock="Right"
+                    Width="110"
+                    Height="38"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    Click="CloseButton_OnClick"
+                    Content="Close" />
+        </DockPanel>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Padding="14"
+                    CornerRadius="14"
+                    Background="#3323344A"
+                    BorderBrush="#66738AA6"
+                    BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Foreground="#FFE2E8F0"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Text="Machine Reports" />
+                    <TextBlock Margin="0,6,0,12"
+                               Foreground="#FF94A3B8"
+                               FontSize="12"
+                               Text="Select machine branch and report type on the left." />
+
+                    <TreeView Background="#14000000"
+                              BorderThickness="0"
+                              ItemsSource="{Binding MachineNodes}"
+                              SelectedItemChanged="TreeView_OnSelectedItemChanged">
+                        <TreeView.Resources>
+                            <Style TargetType="TreeViewItem">
+                                <Setter Property="Foreground" Value="#FFE2E8F0" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Padding" Value="6,3" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Foreground" Value="#FF111827" />
+                                        <Setter Property="Background" Value="#FFFFFFFF" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TreeView.Resources>
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                <TextBlock Text="{Binding Name}" />
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Padding="16"
+                    CornerRadius="14"
+                    Background="#3A203250"
+                    BorderBrush="#6A6E87AA"
+                    BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Padding="16,12"
+                            CornerRadius="10"
+                            Background="#FF35568B"
+                            BorderBrush="#667AA2D6"
+                            BorderThickness="1">
+                        <TextBlock HorizontalAlignment="Center"
+                                   Foreground="#FFE2E8F0"
+                                   FontSize="24"
+                                   FontWeight="SemiBold"
+                                   Text="--- Inspection Summary Report ---" />
+                    </Border>
+
+                    <Border Grid.Row="2"
+                            Padding="14"
+                            CornerRadius="10"
+                            Background="#FF243656"
+                            BorderBrush="#556783A8"
+                            BorderThickness="1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel>
+                                <TextBlock Foreground="#FF94A3B8" Text="Inspection Time:" />
+
+                                <WrapPanel Margin="0,8,0,0"
+                                           Visibility="{Binding IsDailyDetailSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <DatePicker Width="180" SelectedDate="{Binding DailyDetailDate}" />
+                                </WrapPanel>
+
+                                <WrapPanel Margin="0,8,0,0"
+                                           Visibility="{Binding IsDailyTotalSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <DatePicker Width="180" SelectedDate="{Binding DailyTotalDate}" />
+                                </WrapPanel>
+
+                                <WrapPanel Margin="0,8,0,0"
+                                           Visibility="{Binding IsMonthlyTotalSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Margin="0,6,8,0" Foreground="#FF94A3B8" Text="Month" />
+                                    <ComboBox Width="90"
+                                              ItemsSource="{Binding MonthOptions}"
+                                              SelectedItem="{Binding MonthlyTotalMonth}" />
+                                    <TextBlock Margin="16,6,8,0" Foreground="#FF94A3B8" Text="Year" />
+                                    <ComboBox Width="110"
+                                              ItemsSource="{Binding YearOptions}"
+                                              SelectedItem="{Binding MonthlyTotalYear}" />
+                                </WrapPanel>
+
+                                <WrapPanel Margin="0,8,0,0"
+                                           Visibility="{Binding IsYearlyTotalSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Margin="0,6,8,0" Foreground="#FF94A3B8" Text="Year" />
+                                    <ComboBox Width="110"
+                                              ItemsSource="{Binding YearOptions}"
+                                              SelectedItem="{Binding YearlyTotalYear}" />
+                                </WrapPanel>
+                            </StackPanel>
+
+                            <WrapPanel Grid.Column="1"
+                                       VerticalAlignment="Bottom"
+                                       Visibility="{Binding HasReportSelection, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Button Width="110"
+                                        Height="38"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Command="{Binding QueryCommand}"
+                                        Content="Query" />
+                                <Button Margin="10,0,0,0"
+                                        Width="150"
+                                        Height="38"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Click="ExportExcelButton_OnClick"
+                                        Content="Generate Report" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="4"
+                            Padding="12,9"
+                            CornerRadius="8"
+                            Background="#FF2C4874"
+                            BorderBrush="#4A658DBA"
+                            BorderThickness="1">
+                        <DockPanel>
+                            <TextBlock Foreground="#FFE2E8F0"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Text="Results" />
+                        </DockPanel>
+                    </Border>
+
+                    <Grid Grid.Row="6">
+                        <DataGrid AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  ItemsSource="{Binding ReportRecords}"
+                                  HeadersVisibility="Column"
+                                  IsReadOnly="True"
+                                  RowHeaderWidth="0"
+                                  RowHeight="36"
+                                  Background="#FF243A5B"
+                                  AlternatingRowBackground="#FF284262"
+                                  AlternationCount="2"
+                                  Foreground="#FFE2E8F0"
+                                  BorderBrush="#445A6E8A"
+                                  HorizontalGridLinesBrush="#667A95BD"
+                                  GridLinesVisibility="Horizontal"
+                                  Visibility="{Binding IsDailyDetailSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <DataGrid.Resources>
+                                <Style x:Key="CenteredCellTextStyle" TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                    <Setter Property="TextAlignment" Value="Center" />
+                                </Style>
+                            </DataGrid.Resources>
+                            <DataGrid.ColumnHeaderStyle>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Height" Value="40" />
+                                    <Setter Property="Background" Value="#FF1C2F4F" />
+                                    <Setter Property="Foreground" Value="#FFE2E8F0" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                    <Setter Property="BorderBrush" Value="#445A6E8A" />
+                                    <Setter Property="BorderThickness" Value="0,0,1,1" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                    <Setter Property="VerticalContentAlignment" Value="Center" />
+                                </Style>
+                            </DataGrid.ColumnHeaderStyle>
+                            <DataGrid.CellStyle>
+                                <Style TargetType="DataGridCell">
+                                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                    <Setter Property="VerticalContentAlignment" Value="Center" />
+                                    <Setter Property="TextBlock.TextAlignment" Value="Center" />
+                                </Style>
+                            </DataGrid.CellStyle>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Background" Value="#FF243A5B" />
+                                    <Setter Property="Foreground" Value="#FFE2E8F0" />
+                                    <Setter Property="BorderBrush" Value="#667A95BD" />
+                                    <Setter Property="BorderThickness" Value="0,0,0,1" />
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#FF2B456D" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#" Binding="{Binding SerialNumber}" Width="60" ElementStyle="{StaticResource CenteredCellTextStyle}" />
+                                <DataGridTextColumn Header="Start Time" Binding="{Binding StartTime, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="*" ElementStyle="{StaticResource CenteredCellTextStyle}" />
+                                <DataGridTextColumn Header="End Time" Binding="{Binding EndTime, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="*" ElementStyle="{StaticResource CenteredCellTextStyle}" />
+                                <DataGridTextColumn Header="Length" Binding="{Binding Length, StringFormat=F3}" Width="120" ElementStyle="{StaticResource CenteredCellTextStyle}" />
+                                <DataGridTextColumn Header="Weight" Binding="{Binding Weight, StringFormat=F3}" Width="120" ElementStyle="{StaticResource CenteredCellTextStyle}" />
+                                <DataGridTextColumn Header="Avg Speed" Binding="{Binding AverageSpeed, StringFormat=F3}" Width="120" ElementStyle="{StaticResource CenteredCellTextStyle}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <DataGrid AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  ItemsSource="{Binding ReportRecords}"
+                                  HeadersVisibility="Column"
+                                  IsReadOnly="True"
+                                  RowHeaderWidth="0"
+                                  RowHeight="36"
+                                  Background="#FF243A5B"
+                                  AlternatingRowBackground="#FF284262"
+                                  AlternationCount="2"
+                                  Foreground="#FFE2E8F0"
+                                  BorderBrush="#445A6E8A"
+                                  HorizontalGridLinesBrush="#667A95BD"
+                                  GridLinesVisibility="Horizontal"
+                                  Visibility="{Binding IsTotalOutputSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <DataGrid.Resources>
+                                <Style x:Key="CenteredCellTextStyleTotal" TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                    <Setter Property="TextAlignment" Value="Center" />
+                                </Style>
+                            </DataGrid.Resources>
+                            <DataGrid.ColumnHeaderStyle>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Height" Value="40" />
+                                    <Setter Property="Background" Value="#FF1C2F4F" />
+                                    <Setter Property="Foreground" Value="#FFE2E8F0" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                    <Setter Property="BorderBrush" Value="#445A6E8A" />
+                                    <Setter Property="BorderThickness" Value="0,0,1,1" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                    <Setter Property="VerticalContentAlignment" Value="Center" />
+                                </Style>
+                            </DataGrid.ColumnHeaderStyle>
+                            <DataGrid.CellStyle>
+                                <Style TargetType="DataGridCell">
+                                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                    <Setter Property="VerticalContentAlignment" Value="Center" />
+                                    <Setter Property="TextBlock.TextAlignment" Value="Center" />
+                                </Style>
+                            </DataGrid.CellStyle>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Background" Value="#FF243A5B" />
+                                    <Setter Property="Foreground" Value="#FFE2E8F0" />
+                                    <Setter Property="BorderBrush" Value="#667A95BD" />
+                                    <Setter Property="BorderThickness" Value="0,0,0,1" />
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#" Binding="{Binding SerialNumber}" Width="80" ElementStyle="{StaticResource CenteredCellTextStyleTotal}" />
+                                <DataGridTextColumn Header="Total Length" Binding="{Binding Length, StringFormat=F3}" Width="*" ElementStyle="{StaticResource CenteredCellTextStyleTotal}" />
+                                <DataGridTextColumn Header="Total Weight" Binding="{Binding Weight, StringFormat=F3}" Width="*" ElementStyle="{StaticResource CenteredCellTextStyleTotal}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

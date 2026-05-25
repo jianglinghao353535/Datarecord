@@ -8,7 +8,7 @@ namespace Datarecord.Models
 
         public int Port { get; set; } = 3306;
 
-        public string Database { get; set; } = "datarecord";
+        public string Database { get; set; } = "datarecord_accel";
 
         public string UserId { get; set; } = "root";
 

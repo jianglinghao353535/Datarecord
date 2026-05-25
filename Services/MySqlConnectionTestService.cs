@@ -16,11 +16,11 @@ namespace Datarecord.Services
                 command.CommandText = "SELECT 1";
                 command.ExecuteScalar();
 
-                return (true, "MySQL 連線成功。");
+                return (true, "MySQL connection succeeded.");
             }
             catch (Exception ex)
             {
-                return (false, $"MySQL 連線失敗：{ex.Message}");
+                return (false, $"MySQL connection failed: {ex.Message}");
             }
         }
 
@@ -34,11 +34,11 @@ namespace Datarecord.Services
                 connection.Open();
                 EnsureSchema(connection);
 
-                return (true, $"資料庫初始化完成：{settings.Database}");
+                return (true, $"Database initialization completed: {settings.Database}");
             }
             catch (Exception ex)
             {
-                return (false, $"初始化資料庫失敗：{ex.Message}");
+                return (false, $"Database initialization failed: {ex.Message}");
             }
         }
 
@@ -52,15 +52,27 @@ namespace Datarecord.Services
                 connection.Open();
                 EnsureSchema(connection);
 
-                using var command = connection.CreateCommand();
-                command.CommandText = "DELETE FROM machine_trend_records;";
-                var affectedRows = command.ExecuteNonQuery();
+                var trendDeleted = 0;
+                var reportDeleted = 0;
 
-                return (true, $"已清空歷史資料，共刪除 {affectedRows} 筆趨勢記錄。");
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "DELETE FROM machine_trend_records;";
+                    trendDeleted = command.ExecuteNonQuery();
+                }
+
+                if (TableExists(connection, "machine_run_reports"))
+                {
+                    using var reportCommand = connection.CreateCommand();
+                    reportCommand.CommandText = "DELETE FROM machine_run_reports;";
+                    reportDeleted = reportCommand.ExecuteNonQuery();
+                }
+
+                return (true, $"History cleared. Deleted {trendDeleted} trend record(s), {reportDeleted} run report record(s).");
             }
             catch (Exception ex)
             {
-                return (false, $"清空歷史資料失敗：{ex.Message}");
+                return (false, $"Failed to clear history: {ex.Message}");
             }
         }
 
@@ -135,12 +147,53 @@ namespace Datarecord.Services
                     machine_id VARCHAR(36) NOT NULL,
                     timestamp DATETIME(6) NOT NULL,
                     speed DOUBLE NOT NULL,
+                    length DOUBLE NOT NULL,
                     diameter DOUBLE NOT NULL,
-                    temperature_zones LONGTEXT NOT NULL,
+                    tension DOUBLE NOT NULL,
                     PRIMARY KEY (machine_id, timestamp)
                 );
                 """;
             command.ExecuteNonQuery();
+
+            EnsureColumnExists(connection, "machine_trend_records", "length", "DOUBLE NOT NULL DEFAULT 0");
+            EnsureColumnExists(connection, "machine_trend_records", "tension", "DOUBLE NOT NULL DEFAULT 0");
+        }
+
+        private static void EnsureColumnExists(MySqlConnection connection, string tableName, string columnName, string columnDefinition)
+        {
+            using var checkCommand = connection.CreateCommand();
+            checkCommand.CommandText = """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = @tableName
+                  AND column_name = @columnName;
+                """;
+            checkCommand.Parameters.AddWithValue("@tableName", tableName);
+            checkCommand.Parameters.AddWithValue("@columnName", columnName);
+
+            var exists = Convert.ToInt32(checkCommand.ExecuteScalar()) > 0;
+            if (exists)
+            {
+                return;
+            }
+
+            using var alterCommand = connection.CreateCommand();
+            alterCommand.CommandText = $"ALTER TABLE `{tableName}` ADD COLUMN `{columnName}` {columnDefinition};";
+            alterCommand.ExecuteNonQuery();
+        }
+
+        private static bool TableExists(MySqlConnection connection, string tableName)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                  AND table_name = @tableName;
+                """;
+            command.Parameters.AddWithValue("@tableName", tableName);
+            return Convert.ToInt32(command.ExecuteScalar()) > 0;
         }
     }
 }

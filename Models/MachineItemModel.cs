@@ -29,9 +29,29 @@ namespace Datarecord.Models
 
         public double ProductionWeight { get; set; }
 
-        public string ProductionStatus { get; set; } = "´ý™C";
-
         public double CurrentDiameter { get; set; }
+
+        public bool UseManualYAxis { get; set; }
+
+        public double ManualYAxisMin { get; set; }
+
+        public double ManualYAxisMax { get; set; } = 300;
+
+        public double LengthYAxisMin { get; set; }
+
+        public double LengthYAxisMax { get; set; } = 10000;
+
+        public double DiameterYAxisMin { get; set; }
+
+        public double DiameterYAxisMax { get; set; } = 5;
+
+        public double SpeedYAxisMin { get; set; }
+
+        public double SpeedYAxisMax { get; set; } = 2000;
+
+        public double TensionYAxisMin { get; set; }
+
+        public double TensionYAxisMax { get; set; } = 200;
 
         public string PlcAddressProductionSpeed { get; set; } = string.Empty;
 
@@ -39,13 +59,11 @@ namespace Datarecord.Models
 
         public string PlcAddressProductionWeight { get; set; } = string.Empty;
 
-        public string PlcAddressProductionStatus { get; set; } = string.Empty;
+        public string PlcAddressWeight { get; set; } = string.Empty;
 
         public string PlcAddressDiameter { get; set; } = string.Empty;
 
-        public string[] PlcAddressTemperatureZones { get; set; } = new string[8];
-
-        public double[] CurrentTemperatures { get; set; } = new double[8];
+        public string PlcAddressRuningSignal { get; set; } = string.Empty;
 
         public List<MachineTrendRecordModel> TrendRecords { get; set; } = [];
     }

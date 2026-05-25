@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using Datarecord.Models;
 
 namespace Datarecord.Services
@@ -8,5 +9,7 @@ namespace Datarecord.Services
         IReadOnlyList<MachineItemModel> Load();
 
         void Save(IEnumerable<MachineItemModel> machines);
+
+        void ClearMachineHistory(Guid machineId);
     }
 }

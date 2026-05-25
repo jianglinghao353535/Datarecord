@@ -35,7 +35,16 @@ namespace Datarecord.Services
             try
             {
                 var json = File.ReadAllText(_filePath);
-                return JsonSerializer.Deserialize<MySqlSettingsModel>(json, _serializerOptions) ?? new MySqlSettingsModel();
+                var settings = JsonSerializer.Deserialize<MySqlSettingsModel>(json, _serializerOptions) ?? new MySqlSettingsModel();
+
+                if (string.IsNullOrWhiteSpace(settings.Database)
+                    || string.Equals(settings.Database, "datarecord", StringComparison.OrdinalIgnoreCase))
+                {
+                    settings.Database = "datarecord_accel";
+                    Save(settings);
+                }
+
+                return settings;
             }
             catch
             {

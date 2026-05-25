@@ -45,6 +45,19 @@ namespace Datarecord.Services
             }
         }
 
+        public bool IsMachineHistoryEmpty(Guid machineId)
+        {
+            try
+            {
+                var machine = Load().FirstOrDefault(x => x.Id == machineId);
+                return machine is null || machine.TrendRecords.Count == 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public void Save(IEnumerable<MachineItemModel> machines)
         {
             var directory = Path.GetDirectoryName(_filePath);
@@ -58,6 +71,37 @@ namespace Datarecord.Services
 
             var json = JsonSerializer.Serialize(document, _serializerOptions);
             File.WriteAllText(_filePath, json);
+        }
+
+        public void ClearMachineHistory(Guid machineId)
+        {
+            if (!File.Exists(_filePath))
+            {
+                return;
+            }
+
+            try
+            {
+                var json = File.ReadAllText(_filePath);
+                var document = JsonSerializer.Deserialize<MachineLayoutDocument>(json, _serializerOptions);
+                if (document?.Machines is null)
+                {
+                    return;
+                }
+
+                var machine = document.Machines.Find(x => x.Id == machineId);
+                if (machine is null)
+                {
+                    return;
+                }
+
+                machine.TrendRecords.Clear();
+                var output = JsonSerializer.Serialize(document, _serializerOptions);
+                File.WriteAllText(_filePath, output);
+            }
+            catch
+            {
+            }
         }
 
         private sealed class MachineLayoutDocument

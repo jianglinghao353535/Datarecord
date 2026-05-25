@@ -2,7 +2,7 @@
 <Window x:Class="Datarecord.MySqlSettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="資料庫設定"
+        Title="Database Settings"
         Width="560"
         Height="620"
         MinWidth="520"
@@ -28,11 +28,11 @@
                     <TextBlock FontSize="22"
                                FontWeight="SemiBold"
                                Foreground="#FFE2E8F0"
-                               Text="MySQL 資料庫設定" />
+                               Text="MySQL Database Settings" />
                     <TextBlock Margin="0,6,0,0"
                                Foreground="#FF94A3B8"
                                FontSize="12"
-                               Text="可直接提供給客戶設定主機、帳號與密碼。" />
+                               Text="Configure host, account, and password." />
                 </StackPanel>
 
                 <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
@@ -40,34 +40,34 @@
                         <CheckBox Margin="0,0,0,12"
                                   Foreground="#FFE2E8F0"
                                   IsChecked="{Binding Enabled}"
-                                  Content="啟用 MySQL 儲存" />
+                                  Content="Enable MySQL Storage" />
 
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="主機位址" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="Server" />
                         <TextBox Margin="0,4,0,10"
                                  Style="{StaticResource FieldTextBoxStyle}"
                                  Text="{Binding Server, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="連接埠" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="Port" />
                         <TextBox Margin="0,4,0,10"
                                  Style="{StaticResource FieldTextBoxStyle}"
                                  Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="資料庫名稱" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="Database" />
                         <TextBox Margin="0,4,0,10"
                                  Style="{StaticResource FieldTextBoxStyle}"
                                  Text="{Binding Database, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="使用者帳號" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="User ID" />
                         <TextBox Margin="0,4,0,10"
                                  Style="{StaticResource FieldTextBoxStyle}"
                                  Text="{Binding UserId, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="密碼" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="Password" />
                         <TextBox Margin="0,4,0,10"
                                  Style="{StaticResource FieldTextBoxStyle}"
                                  Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="字元集" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="Charset" />
                         <TextBox Margin="0,4,0,10"
                                  Style="{StaticResource FieldTextBoxStyle}"
                                  Text="{Binding Charset, UpdateSourceTrigger=PropertyChanged}" />
@@ -100,18 +100,18 @@
                                 Margin="0,0,8,0"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 Click="InitializeDatabaseButton_OnClick"
-                                Content="初始化資料庫" />
-                        <Button Width="100"
+                                Content="Initialize DB" />
+                        <Button Width="120"
                                 Height="38"
                                 Margin="0,0,8,0"
                                 Style="{StaticResource DangerButtonStyle}"
                                 Click="ClearHistoryButton_OnClick"
-                                Content="清空歷史" />
-                        <Button Width="100"
+                                Content="Clear History" />
+                        <Button Width="160"
                                 Height="38"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 Click="TestConnectionButton_OnClick"
-                                Content="測試連線" />
+                                Content="Test Connection" />
                     </StackPanel>
 
                     <StackPanel Grid.Row="2"
@@ -122,12 +122,12 @@
                                 Margin="0,0,8,0"
                                 Style="{StaticResource PrimaryButtonStyle}"
                                 Click="SaveButton_OnClick"
-                                Content="儲存設定" />
+                                Content="Save" />
                         <Button Width="100"
                                 Height="38"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 Click="CloseButton_OnClick"
-                                Content="關閉" />
+                                Content="Close" />
                     </StackPanel>
                 </Grid>
             </Grid>

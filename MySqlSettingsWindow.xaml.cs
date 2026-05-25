@@ -34,8 +34,8 @@ namespace Datarecord
         private void ClearHistoryButton_OnClick(object sender, RoutedEventArgs e)
         {
             var result = MessageBox.Show(
-                "這會清空 machine_trend_records 內的所有歷史資料，是否繼續？",
-                "確認清空歷史",
+                "This will delete all historical records in machine_trend_records and machine_run_reports. Continue?",
+                "Confirm Clear History",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
@@ -46,12 +46,17 @@ namespace Datarecord
 
             var clearResult = _connectionTestService.ClearHistory(ViewModel.ToModel());
             ViewModel.StatusText = clearResult.Message;
+
+            if (clearResult.Success && Owner is MainWindow mainWindow)
+            {
+                mainWindow.ClearAllMachineTrendHistoryInMemory();
+            }
         }
 
         private void SaveButton_OnClick(object sender, RoutedEventArgs e)
         {
             _settingsService.Save(ViewModel.ToModel());
-            ViewModel.StatusText = "設定已儲存。";
+            ViewModel.StatusText = "Settings saved.";
             DialogResult = true;
         }
 

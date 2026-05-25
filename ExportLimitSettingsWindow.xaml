@@ -1,0 +1,109 @@
+<Window x:Class="Datarecord.ExportLimitSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding ExportLimitWindowTitleText}"
+        Width="460"
+        Height="420"
+        MinWidth="420"
+        MinHeight="380"
+        WindowStartupLocation="CenterOwner"
+        Background="#FF0F172A">
+    <Grid Margin="14">
+        <Border Padding="16"
+                CornerRadius="12"
+                Background="#3323344A"
+                BorderBrush="#66738AA6"
+                BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Foreground="#FFE2E8F0"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Text="{Binding ExportLimitWindowHeaderText}" />
+
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Column="1" Foreground="#FF9FB2C8" FontSize="12" Text="{Binding ExportLimitLowerText}" HorizontalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Foreground="#FF9FB2C8" FontSize="12" Text="{Binding ExportLimitUpperText}" HorizontalAlignment="Center" />
+
+                    <TextBlock Grid.Row="2" Foreground="#FFE2E8F0" VerticalAlignment="Center" Text="{Binding ExportLimitLengthText}" />
+                    <TextBox Grid.Row="2" Grid.Column="1" Margin="8,0,8,0" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding ExportLengthLowerLimit, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Row="2" Grid.Column="2" Margin="8,0,0,0" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding ExportLengthUpperLimit, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Grid.Row="4" Foreground="#FFE2E8F0" VerticalAlignment="Center" Text="{Binding ExportLimitSpeedText}" />
+                    <TextBox Grid.Row="4" Grid.Column="1" Margin="8,0,8,0" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding ExportSpeedLowerLimit, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox Grid.Row="4" Grid.Column="2" Margin="8,0,0,0" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding ExportSpeedUpperLimit, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock Grid.Row="6" Foreground="#FFE2E8F0" VerticalAlignment="Center" Text="{Binding ExportLimitDiameterText}" />
+                    <TextBox Grid.Row="6" Grid.Column="1"
+                             Margin="8,0,8,0"
+                             VerticalAlignment="Center"
+                             Style="{StaticResource FieldTextBoxStyle}"
+                             Text="{Binding ExportDiameterLowerLimit, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat=F5}" />
+                    <TextBox Grid.Row="6" Grid.Column="2"
+                             Margin="8,0,0,0"
+                             VerticalAlignment="Center"
+                             Style="{StaticResource FieldTextBoxStyle}"
+                             Text="{Binding ExportDiameterUpperLimit, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat=F5}" />
+                </Grid>
+
+                <Grid Grid.Row="2" Margin="0,170,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Foreground="#FFE2E8F0" VerticalAlignment="Center" Text="{Binding ExportLimitTensionText}" RenderTransformOrigin="0.476,-2.142" HorizontalAlignment="Right" Width="120" />
+                    <TextBox Grid.Column="1"
+                             Margin="8,0,8,0"
+                             VerticalAlignment="Center"
+                             Style="{StaticResource FieldTextBoxStyle}"
+                             Text="{Binding ExportTensionLowerLimit, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat=F3}" />
+                    <TextBox Grid.Column="2"
+                             Margin="8,0,0,0"
+                             VerticalAlignment="Center"
+                             Style="{StaticResource FieldTextBoxStyle}"
+                             Text="{Binding ExportTensionUpperLimit, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat=F3}" />
+                </Grid>
+
+                <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Width="110"
+                            Height="38"
+                            Margin="0,0,8,0"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Click="CancelButton_OnClick"
+                            Content="{Binding CloseText}" />
+                    <Button Width="110"
+                            Height="38"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Click="ConfirmButton_OnClick"
+                            Content="{Binding ConfirmText}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

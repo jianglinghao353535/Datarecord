@@ -7,11 +7,11 @@ namespace Datarecord.ViewModels
         private bool _enabled;
         private string _server = "localhost";
         private int _port = 3306;
-        private string _database = "datarecord";
+        private string _database = "datarecord_accel";
         private string _userId = "root";
         private string _password = string.Empty;
         private string _charset = "utf8mb4";
-        private string _statusText = "ÕˆÏÈİ”ÈëÙYÁÏìßB¾€ÙYÓ¡£";
+        private string _statusText = "Please enter database connection settings.";
 
         public bool Enabled
         {

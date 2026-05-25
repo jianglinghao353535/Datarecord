@@ -1,4 +1,5 @@
 using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -32,7 +33,9 @@ namespace Datarecord.Services
 
             try
             {
-                using var connection = new MySqlConnection(BuildConnectionString(settings));
+                EnsureDatabase(settings);
+
+                using var connection = new MySqlConnection(BuildConnectionString(settings, includeDatabase: true));
                 connection.Open();
                 EnsureSchema(connection);
 
@@ -53,6 +56,34 @@ namespace Datarecord.Services
             }
         }
 
+        public void ClearMachineHistory(Guid machineId)
+        {
+            _fallbackStorageService.ClearMachineHistory(machineId);
+
+            var settings = _settingsService.Load();
+            if (!settings.Enabled)
+            {
+                return;
+            }
+
+            try
+            {
+                EnsureDatabase(settings);
+
+                using var connection = new MySqlConnection(BuildConnectionString(settings, includeDatabase: true));
+                connection.Open();
+                EnsureSchema(connection);
+
+                using var command = connection.CreateCommand();
+                command.CommandText = "DELETE FROM machine_trend_records WHERE machine_id = @machineId;";
+                command.Parameters.AddWithValue("@machineId", machineId.ToString());
+                command.ExecuteNonQuery();
+            }
+            catch
+            {
+            }
+        }
+
         public void Save(IEnumerable<MachineItemModel> machines)
         {
             var machineList = machines.ToList();
@@ -66,11 +97,14 @@ namespace Datarecord.Services
 
             try
             {
-                using var connection = new MySqlConnection(BuildConnectionString(settings));
+                EnsureDatabase(settings);
+
+                using var connection = new MySqlConnection(BuildConnectionString(settings, includeDatabase: true));
                 connection.Open();
                 EnsureSchema(connection);
 
                 using var transaction = connection.BeginTransaction();
+                var hasReportTable = TableExists(connection, transaction, "machine_run_reports");
 
                 var machineIds = machineList.Select(x => x.Id.ToString()).ToList();
                 if (machineIds.Count > 0)
@@ -83,6 +117,28 @@ namespace Datarecord.Services
                         deleteMissing.Parameters.AddWithValue($"@id{i}", machineIds[i]);
                     }
                     deleteMissing.ExecuteNonQuery();
+
+                    using var deleteMissingTrends = connection.CreateCommand();
+                    deleteMissingTrends.Transaction = transaction;
+                    deleteMissingTrends.CommandText = $"DELETE FROM machine_trend_records WHERE machine_id NOT IN ({string.Join(",", machineIds.Select((_, i) => $"@tid{i}"))})";
+                    for (var i = 0; i < machineIds.Count; i++)
+                    {
+                        deleteMissingTrends.Parameters.AddWithValue($"@tid{i}", machineIds[i]);
+                    }
+                    deleteMissingTrends.ExecuteNonQuery();
+
+                    if (hasReportTable)
+                    {
+                        using var deleteMissingReports = connection.CreateCommand();
+                        deleteMissingReports.Transaction = transaction;
+                        deleteMissingReports.CommandText = $"DELETE FROM machine_run_reports WHERE machine_id NOT IN ({string.Join(",", machineIds.Select((_, i) => $"@rid{i}"))})";
+                        for (var i = 0; i < machineIds.Count; i++)
+                        {
+                            deleteMissingReports.Parameters.AddWithValue($"@rid{i}", machineIds[i]);
+                        }
+
+                        deleteMissingReports.ExecuteNonQuery();
+                    }
                 }
                 else
                 {
@@ -90,6 +146,14 @@ namespace Datarecord.Services
                     truncateTrends.Transaction = transaction;
                     truncateTrends.CommandText = "DELETE FROM machine_trend_records; DELETE FROM machine_configs;";
                     truncateTrends.ExecuteNonQuery();
+
+                    if (hasReportTable)
+                    {
+                        using var truncateReports = connection.CreateCommand();
+                        truncateReports.Transaction = transaction;
+                        truncateReports.CommandText = "DELETE FROM machine_run_reports;";
+                        truncateReports.ExecuteNonQuery();
+                    }
                 }
 
                 foreach (var machine in machineList)
@@ -105,20 +169,41 @@ namespace Datarecord.Services
             }
         }
 
-        private static string BuildConnectionString(MySqlSettingsModel settings)
+        private static string BuildConnectionString(MySqlSettingsModel settings, bool includeDatabase)
         {
             var builder = new MySqlConnectionStringBuilder
             {
                 Server = settings.Server,
                 Port = (uint)settings.Port,
-                Database = settings.Database,
                 UserID = settings.UserId,
                 Password = settings.Password,
                 CharacterSet = settings.Charset,
                 AllowUserVariables = true
             };
 
+            if (includeDatabase)
+            {
+                builder.Database = settings.Database;
+            }
+
             return builder.ConnectionString;
+        }
+
+        private static void EnsureDatabase(MySqlSettingsModel settings)
+        {
+            using var connection = new MySqlConnection(BuildConnectionString(settings, includeDatabase: false));
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            var databaseName = EscapeIdentifier(settings.Database);
+            var charset = string.IsNullOrWhiteSpace(settings.Charset) ? "utf8mb4" : settings.Charset.Trim();
+            command.CommandText = $"CREATE DATABASE IF NOT EXISTS `{databaseName}` CHARACTER SET {charset};";
+            command.ExecuteNonQuery();
+        }
+
+        private static string EscapeIdentifier(string identifier)
+        {
+            return (identifier ?? string.Empty).Replace("`", "``", StringComparison.Ordinal);
         }
 
         private void EnsureSchema(MySqlConnection connection)
@@ -140,9 +225,22 @@ namespace Datarecord.Services
                     production_weight DOUBLE NOT NULL,
                     production_status VARCHAR(100) NOT NULL,
                     current_diameter DOUBLE NOT NULL,
+                    use_manual_y_axis BIT NOT NULL,
+                    manual_y_axis_min DOUBLE NOT NULL,
+                    manual_y_axis_max DOUBLE NOT NULL,
+                    length_y_axis_min DOUBLE NOT NULL,
+                    length_y_axis_max DOUBLE NOT NULL,
+                    diameter_y_axis_min DOUBLE NOT NULL,
+                    diameter_y_axis_max DOUBLE NOT NULL,
+                    speed_y_axis_min DOUBLE NOT NULL,
+                    speed_y_axis_max DOUBLE NOT NULL,
+                    tension_y_axis_min DOUBLE NOT NULL,
+                    tension_y_axis_max DOUBLE NOT NULL,
                     plc_address_production_speed VARCHAR(100) NOT NULL,
                     plc_address_production_length VARCHAR(100) NOT NULL,
                     plc_address_production_weight VARCHAR(100) NOT NULL,
+                    plc_address_weight VARCHAR(100) NOT NULL,
+                    plc_address_runing_signal VARCHAR(100) NOT NULL,
                     plc_address_production_status VARCHAR(100) NOT NULL,
                     plc_address_diameter VARCHAR(100) NOT NULL,
                     plc_address_temperature_zones LONGTEXT NOT NULL,
@@ -154,12 +252,67 @@ namespace Datarecord.Services
                     machine_id VARCHAR(36) NOT NULL,
                     timestamp DATETIME(6) NOT NULL,
                     speed DOUBLE NOT NULL,
+                    length DOUBLE NOT NULL,
                     diameter DOUBLE NOT NULL,
-                    temperature_zones LONGTEXT NOT NULL,
+                    tension DOUBLE NOT NULL,
                     PRIMARY KEY (machine_id, timestamp)
                 );
                 """;
             command.ExecuteNonQuery();
+
+            EnsureColumnExists(connection, "machine_trend_records", "length", "DOUBLE NOT NULL DEFAULT 0");
+            EnsureColumnExists(connection, "machine_trend_records", "tension", "DOUBLE NOT NULL DEFAULT 0");
+            EnsureColumnExists(connection, "machine_configs", "use_manual_y_axis", "BIT NOT NULL DEFAULT b'0'");
+            EnsureColumnExists(connection, "machine_configs", "manual_y_axis_min", "DOUBLE NOT NULL DEFAULT 0");
+            EnsureColumnExists(connection, "machine_configs", "manual_y_axis_max", "DOUBLE NOT NULL DEFAULT 300");
+            EnsureColumnExists(connection, "machine_configs", "length_y_axis_min", "DOUBLE NOT NULL DEFAULT 0");
+            EnsureColumnExists(connection, "machine_configs", "length_y_axis_max", "DOUBLE NOT NULL DEFAULT 10000");
+            EnsureColumnExists(connection, "machine_configs", "diameter_y_axis_min", "DOUBLE NOT NULL DEFAULT 0");
+            EnsureColumnExists(connection, "machine_configs", "diameter_y_axis_max", "DOUBLE NOT NULL DEFAULT 5");
+            EnsureColumnExists(connection, "machine_configs", "speed_y_axis_min", "DOUBLE NOT NULL DEFAULT 0");
+            EnsureColumnExists(connection, "machine_configs", "speed_y_axis_max", "DOUBLE NOT NULL DEFAULT 2000");
+            EnsureColumnExists(connection, "machine_configs", "tension_y_axis_min", "DOUBLE NOT NULL DEFAULT 0");
+            EnsureColumnExists(connection, "machine_configs", "tension_y_axis_max", "DOUBLE NOT NULL DEFAULT 200");
+            EnsureColumnExists(connection, "machine_configs", "plc_address_weight", "VARCHAR(100) NOT NULL DEFAULT ''");
+            EnsureColumnExists(connection, "machine_configs", "plc_address_runing_signal", "VARCHAR(100) NOT NULL DEFAULT ''");
+        }
+
+        private static void EnsureColumnExists(MySqlConnection connection, string tableName, string columnName, string columnDefinition)
+        {
+            using var checkCommand = connection.CreateCommand();
+            checkCommand.CommandText = """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = @tableName
+                  AND column_name = @columnName;
+                """;
+            checkCommand.Parameters.AddWithValue("@tableName", tableName);
+            checkCommand.Parameters.AddWithValue("@columnName", columnName);
+
+            var exists = Convert.ToInt32(checkCommand.ExecuteScalar()) > 0;
+            if (exists)
+            {
+                return;
+            }
+
+            using var alterCommand = connection.CreateCommand();
+            alterCommand.CommandText = $"ALTER TABLE `{tableName}` ADD COLUMN `{columnName}` {columnDefinition};";
+            alterCommand.ExecuteNonQuery();
+        }
+
+        private static bool TableExists(MySqlConnection connection, MySqlTransaction transaction, string tableName)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = """
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                  AND table_name = @tableName;
+                """;
+            command.Parameters.AddWithValue("@tableName", tableName);
+            return Convert.ToInt32(command.ExecuteScalar()) > 0;
         }
 
         private IEnumerable<MachineItemModel> LoadMachines(MySqlConnection connection)
@@ -184,15 +337,24 @@ namespace Datarecord.Services
                     ProductionSpeed = reader.GetDouble("production_speed"),
                     ProductionLength = reader.GetDouble("production_length"),
                     ProductionWeight = reader.GetDouble("production_weight"),
-                    ProductionStatus = reader.GetString("production_status"),
                     CurrentDiameter = reader.GetDouble("current_diameter"),
+                    UseManualYAxis = reader.GetBoolean("use_manual_y_axis"),
+                    ManualYAxisMin = reader.GetDouble("manual_y_axis_min"),
+                    ManualYAxisMax = reader.GetDouble("manual_y_axis_max"),
+                    LengthYAxisMin = reader.GetDouble("length_y_axis_min"),
+                    LengthYAxisMax = reader.GetDouble("length_y_axis_max"),
+                    DiameterYAxisMin = reader.GetDouble("diameter_y_axis_min"),
+                    DiameterYAxisMax = reader.GetDouble("diameter_y_axis_max"),
+                    SpeedYAxisMin = reader.GetDouble("speed_y_axis_min"),
+                    SpeedYAxisMax = reader.GetDouble("speed_y_axis_max"),
+                    TensionYAxisMin = reader.GetDouble("tension_y_axis_min"),
+                    TensionYAxisMax = reader.GetDouble("tension_y_axis_max"),
                     PlcAddressProductionSpeed = reader.GetString("plc_address_production_speed"),
                     PlcAddressProductionLength = reader.GetString("plc_address_production_length"),
                     PlcAddressProductionWeight = reader.GetString("plc_address_production_weight"),
-                    PlcAddressProductionStatus = reader.GetString("plc_address_production_status"),
+                    PlcAddressWeight = reader.GetString("plc_address_weight"),
+                    PlcAddressRuningSignal = reader.GetString("plc_address_runing_signal"),
                     PlcAddressDiameter = reader.GetString("plc_address_diameter"),
-                    PlcAddressTemperatureZones = DeserializeStringArray(reader.GetString("plc_address_temperature_zones")),
-                    CurrentTemperatures = DeserializeDoubleArray(reader.GetString("current_temperatures")),
                     TrendRecords = []
                 };
             }
@@ -201,7 +363,7 @@ namespace Datarecord.Services
         private IEnumerable<(Guid MachineId, MachineTrendRecordModel Record)> LoadTrendRecords(MySqlConnection connection)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT machine_id, timestamp, speed, diameter, temperature_zones FROM machine_trend_records ORDER BY timestamp";
+            command.CommandText = "SELECT machine_id, timestamp, speed, length, diameter, tension FROM machine_trend_records ORDER BY timestamp";
             using var reader = command.ExecuteReader();
 
             while (reader.Read())
@@ -212,8 +374,9 @@ namespace Datarecord.Services
                     {
                         Timestamp = reader.GetDateTime("timestamp"),
                         Speed = reader.GetDouble("speed"),
+                        Length = reader.GetDouble("length"),
                         Diameter = reader.GetDouble("diameter"),
-                        TemperatureZones = DeserializeDoubleArray(reader.GetString("temperature_zones"))
+                        Tension = reader.GetDouble("tension")
                     });
             }
         }
@@ -226,13 +389,19 @@ namespace Datarecord.Services
                 INSERT INTO machine_configs (
                     id, name, ip_address, plc_type, port, sample_interval_ms, position_x, position_y, is_enabled,
                     production_speed, production_length, production_weight, production_status, current_diameter,
-                    plc_address_production_speed, plc_address_production_length, plc_address_production_weight,
+                    use_manual_y_axis, manual_y_axis_min, manual_y_axis_max,
+                    length_y_axis_min, length_y_axis_max, diameter_y_axis_min, diameter_y_axis_max,
+                    speed_y_axis_min, speed_y_axis_max, tension_y_axis_min, tension_y_axis_max,
+                    plc_address_production_speed, plc_address_production_length, plc_address_production_weight, plc_address_weight, plc_address_runing_signal,
                     plc_address_production_status, plc_address_diameter, plc_address_temperature_zones,
                     current_temperatures, updated_at)
                 VALUES (
                     @id, @name, @ipAddress, @plcType, @port, @sampleIntervalMs, @positionX, @positionY, @isEnabled,
                     @productionSpeed, @productionLength, @productionWeight, @productionStatus, @currentDiameter,
-                    @addressSpeed, @addressLength, @addressWeight, @addressStatus, @addressDiameter,
+                    @useManualYAxis, @manualYAxisMin, @manualYAxisMax,
+                    @lengthYAxisMin, @lengthYAxisMax, @diameterYAxisMin, @diameterYAxisMax,
+                    @speedYAxisMin, @speedYAxisMax, @tensionYAxisMin, @tensionYAxisMax,
+                    @addressSpeed, @addressLength, @addressWeight, @addressWeightReport, @addressRuningSignal, @addressStatus, @addressDiameter,
                     @addressTemperatureZones, @currentTemperatures, @updatedAt)
                 ON DUPLICATE KEY UPDATE
                     name = VALUES(name),
@@ -248,9 +417,22 @@ namespace Datarecord.Services
                     production_weight = VALUES(production_weight),
                     production_status = VALUES(production_status),
                     current_diameter = VALUES(current_diameter),
+                    use_manual_y_axis = VALUES(use_manual_y_axis),
+                    manual_y_axis_min = VALUES(manual_y_axis_min),
+                    manual_y_axis_max = VALUES(manual_y_axis_max),
+                    length_y_axis_min = VALUES(length_y_axis_min),
+                    length_y_axis_max = VALUES(length_y_axis_max),
+                    diameter_y_axis_min = VALUES(diameter_y_axis_min),
+                    diameter_y_axis_max = VALUES(diameter_y_axis_max),
+                    speed_y_axis_min = VALUES(speed_y_axis_min),
+                    speed_y_axis_max = VALUES(speed_y_axis_max),
+                    tension_y_axis_min = VALUES(tension_y_axis_min),
+                    tension_y_axis_max = VALUES(tension_y_axis_max),
                     plc_address_production_speed = VALUES(plc_address_production_speed),
                     plc_address_production_length = VALUES(plc_address_production_length),
                     plc_address_production_weight = VALUES(plc_address_production_weight),
+                    plc_address_weight = VALUES(plc_address_weight),
+                    plc_address_runing_signal = VALUES(plc_address_runing_signal),
                     plc_address_production_status = VALUES(plc_address_production_status),
                     plc_address_diameter = VALUES(plc_address_diameter),
                     plc_address_temperature_zones = VALUES(plc_address_temperature_zones),
@@ -270,15 +452,28 @@ namespace Datarecord.Services
             command.Parameters.AddWithValue("@productionSpeed", machine.ProductionSpeed);
             command.Parameters.AddWithValue("@productionLength", machine.ProductionLength);
             command.Parameters.AddWithValue("@productionWeight", machine.ProductionWeight);
-            command.Parameters.AddWithValue("@productionStatus", machine.ProductionStatus);
+            command.Parameters.AddWithValue("@productionStatus", "N/A");
             command.Parameters.AddWithValue("@currentDiameter", machine.CurrentDiameter);
+            command.Parameters.AddWithValue("@useManualYAxis", machine.UseManualYAxis);
+            command.Parameters.AddWithValue("@manualYAxisMin", machine.ManualYAxisMin);
+            command.Parameters.AddWithValue("@manualYAxisMax", machine.ManualYAxisMax);
+            command.Parameters.AddWithValue("@lengthYAxisMin", machine.LengthYAxisMin);
+            command.Parameters.AddWithValue("@lengthYAxisMax", machine.LengthYAxisMax);
+            command.Parameters.AddWithValue("@diameterYAxisMin", machine.DiameterYAxisMin);
+            command.Parameters.AddWithValue("@diameterYAxisMax", machine.DiameterYAxisMax);
+            command.Parameters.AddWithValue("@speedYAxisMin", machine.SpeedYAxisMin);
+            command.Parameters.AddWithValue("@speedYAxisMax", machine.SpeedYAxisMax);
+            command.Parameters.AddWithValue("@tensionYAxisMin", machine.TensionYAxisMin);
+            command.Parameters.AddWithValue("@tensionYAxisMax", machine.TensionYAxisMax);
             command.Parameters.AddWithValue("@addressSpeed", machine.PlcAddressProductionSpeed ?? string.Empty);
             command.Parameters.AddWithValue("@addressLength", machine.PlcAddressProductionLength ?? string.Empty);
             command.Parameters.AddWithValue("@addressWeight", machine.PlcAddressProductionWeight ?? string.Empty);
-            command.Parameters.AddWithValue("@addressStatus", machine.PlcAddressProductionStatus ?? string.Empty);
+            command.Parameters.AddWithValue("@addressWeightReport", machine.PlcAddressWeight ?? string.Empty);
+            command.Parameters.AddWithValue("@addressRuningSignal", machine.PlcAddressRuningSignal ?? string.Empty);
+            command.Parameters.AddWithValue("@addressStatus", string.Empty);
             command.Parameters.AddWithValue("@addressDiameter", machine.PlcAddressDiameter ?? string.Empty);
-            command.Parameters.AddWithValue("@addressTemperatureZones", JsonSerializer.Serialize(machine.PlcAddressTemperatureZones ?? [], _serializerOptions));
-            command.Parameters.AddWithValue("@currentTemperatures", JsonSerializer.Serialize(machine.CurrentTemperatures ?? [], _serializerOptions));
+            command.Parameters.AddWithValue("@addressTemperatureZones", JsonSerializer.Serialize(Array.Empty<string>(), _serializerOptions));
+            command.Parameters.AddWithValue("@currentTemperatures", JsonSerializer.Serialize(Array.Empty<double>(), _serializerOptions));
             command.Parameters.AddWithValue("@updatedAt", DateTime.Now);
             command.ExecuteNonQuery();
         }
@@ -296,26 +491,18 @@ namespace Datarecord.Services
                 using var insertCommand = connection.CreateCommand();
                 insertCommand.Transaction = transaction;
                 insertCommand.CommandText = """
-                    INSERT INTO machine_trend_records (machine_id, timestamp, speed, diameter, temperature_zones)
-                    VALUES (@machineId, @timestamp, @speed, @diameter, @temperatureZones)
+                    INSERT INTO machine_trend_records (machine_id, timestamp, speed, length, diameter, tension)
+                    VALUES (@machineId, @timestamp, @speed, @length, @diameter, @tension)
                     """;
                 insertCommand.Parameters.AddWithValue("@machineId", machine.Id.ToString());
                 insertCommand.Parameters.AddWithValue("@timestamp", record.Timestamp);
                 insertCommand.Parameters.AddWithValue("@speed", record.Speed);
+                insertCommand.Parameters.AddWithValue("@length", record.Length);
                 insertCommand.Parameters.AddWithValue("@diameter", record.Diameter);
-                insertCommand.Parameters.AddWithValue("@temperatureZones", JsonSerializer.Serialize(record.TemperatureZones ?? [], _serializerOptions));
+                insertCommand.Parameters.AddWithValue("@tension", record.Tension);
                 insertCommand.ExecuteNonQuery();
             }
         }
 
-        private double[] DeserializeDoubleArray(string json)
-        {
-            return JsonSerializer.Deserialize<double[]>(json, _serializerOptions) ?? new double[8];
-        }
-
-        private string[] DeserializeStringArray(string json)
-        {
-            return JsonSerializer.Deserialize<string[]>(json, _serializerOptions) ?? new string[8];
-        }
     }
 }

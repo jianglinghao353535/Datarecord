@@ -2,9 +2,10 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:viewModels="clr-namespace:Datarecord.ViewModels"
-        Title="機台詳情"
-        Width="1240"
-        Height="820"
+        Title="{Binding WindowTitleText}"
+        Width="1889"
+        Height="1171"
+        WindowState="Maximized"
         MinWidth="980"
         MinHeight="680"
         Background="#FF0F172A">
@@ -42,27 +43,27 @@
                     <TextBlock Margin="0,6,0,0"
                                Foreground="#FF94A3B8"
                                FontSize="12"
-                               Text="單機監控畫面：可記錄參數並依時間區段查詢曲線。" />
+                                Text="{Binding HeaderDescriptionText}" />
                 </StackPanel>
 
-                <Button Grid.Column="1"
-                        Width="110"
-                        Height="38"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        Click="CloseButton_OnClick"
-                        Content="返回" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Width="110"
+                            Height="38"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Click="CloseButton_OnClick"
+                            Content="{Binding BackButtonText}" />
+                </StackPanel>
             </Grid>
         </Border>
 
         <ScrollViewer Grid.Row="2"
-                      HorizontalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto"
                       CanContentScroll="False">
             <Grid MinWidth="980" MinHeight="560">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="340" />
-                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="400" />
+                    <ColumnDefinition Width="10" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
@@ -74,18 +75,18 @@
                         BorderThickness="1">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <TextBlock Foreground="#FFE2E8F0" FontSize="19" FontWeight="SemiBold" Text="基本參數" />
+                            <TextBlock Foreground="#FFE2E8F0" FontSize="19" FontWeight="SemiBold" Text="{Binding BasicParametersText}" />
 
                             <Button Margin="0,12,0,0"
                                     Height="36"
                                     Style="{StaticResource SecondaryButtonStyle}"
                                     Click="PlcAddressConfigButton_OnClick"
-                                    Content="PLC 變數位址設定" />
+                                    Content="{Binding PlcAddressConfigText}" />
                             <Button Margin="0,8,0,0"
                                     Height="36"
                                     Style="{StaticResource PrimaryButtonStyle}"
                                     Command="{Binding RefreshFromPlcCommand}"
-                                    Content="重新連線 PLC" />
+                                    Content="{Binding ReconnectPlcText}"  />
                             <TextBlock Margin="0,6,0,0"
                                        Foreground="#FF94A3B8"
                                        FontSize="11"
@@ -95,47 +96,29 @@
                                        Foreground="#FF94A3B8"
                                        FontSize="11"
                                        TextWrapping="Wrap"
-                                       Text="啟動後會自動連線 PLC；若失敗可在此手動重連。" />
+                                       Text="{Binding PlcReconnectHintText}" />
 
-                            <TextBlock Margin="0,12,0,0" Foreground="#FF94A3B8" FontSize="12" Text="生產速度" />
-                            <TextBox Margin="0,6,0,0" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding ProductionSpeed, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Margin="0,12,0,0" Foreground="#FF94A3B8" FontSize="12" Text="{Binding ProductionSpeedLabel}" />
+                            <TextBox Margin="0,6,0,0"
+                                     Style="{StaticResource FieldTextBoxStyle}"
+                                     Text="{Binding ProductionSpeed, StringFormat=F2, UpdateSourceTrigger=LostFocus}" />
 
-                            <TextBlock Margin="0,12,0,0" Foreground="#FF94A3B8" FontSize="12" Text="生產長度" />
-                            <TextBox Margin="0,6,0,0" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding ProductionLength, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Margin="0,12,0,0" Foreground="#FF94A3B8" FontSize="12" Text="{Binding ProductionLengthLabel}" />
+                            <TextBox Margin="0,6,0,0"
+                                     Style="{StaticResource FieldTextBoxStyle}"
+                                     Text="{Binding ProductionLength, StringFormat=F2, UpdateSourceTrigger=LostFocus}" />
 
-                            <TextBlock Margin="0,12,0,0" Foreground="#FF94A3B8" FontSize="12" Text="生產重量" />
+                            <TextBlock Margin="0,12,0,0" Foreground="#FF94A3B8" FontSize="12" Text="{Binding ProductionWeightLabel}" />
                             <TextBox Margin="0,6,0,0" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding ProductionWeight, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <TextBlock Margin="0,12,0,0" Foreground="#FF94A3B8" FontSize="12" Text="生產狀態" />
-                            <TextBox Margin="0,6,0,0" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding ProductionStatus, UpdateSourceTrigger=PropertyChanged}" />
-
-                            <TextBlock Margin="0,12,0,0" Foreground="#FF94A3B8" FontSize="12" Text="目前線徑" />
+                            <TextBlock Margin="0,12,0,0" Foreground="#FF94A3B8" FontSize="12" Text="{Binding CurrentDiameterLabel}" />
                             <TextBox Margin="0,6,0,0" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding CurrentDiameter, UpdateSourceTrigger=PropertyChanged}" />
-
-                            <TextBlock Margin="0,16,0,8" FontWeight="SemiBold" Foreground="#FFE2E8F0" Text="溫區即時值" />
-
-                            <ItemsControl ItemsSource="{Binding TemperatureZones}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type viewModels:TemperatureZoneViewModel}">
-                                        <DockPanel Margin="0,4,0,0" LastChildFill="True">
-                                            <CheckBox Width="88"
-                                                      VerticalAlignment="Center"
-                                                      Foreground="#FFE2E8F0"
-                                                      IsChecked="{Binding IsVisible}"
-                                                      Content="{Binding Name}" />
-                                            <TextBox Margin="8,0,0,0"
-                                                     Style="{StaticResource FieldTextBoxStyle}"
-                                                     Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
-                                        </DockPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
 
                             <Button Margin="0,16,0,0"
                                     Height="40"
                                     Style="{StaticResource PrimaryButtonStyle}"
                                     Command="{Binding RecordSampleCommand}"
-                                    Content="記錄目前資料點" />
+                                    Content="{Binding RecordCurrentDataPointText}"  />
                         </StackPanel>
                     </ScrollViewer>
                 </Border>
@@ -159,19 +142,17 @@
                                 <ColumnDefinition Width="10" />
                                 <ColumnDefinition Width="145" />
                                 <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="200" />
                                 <ColumnDefinition Width="10" />
                                 <ColumnDefinition Width="145" />
                                 <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="200" />
+                                <ColumnDefinition Width="50" />
                                 <ColumnDefinition Width="120" />
-                                <ColumnDefinition Width="14" />
-                                <ColumnDefinition Width="110" />
-                                 <ColumnDefinition Width="10" />
-                                 <ColumnDefinition Width="110" />
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0">
-                                <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="曲線類型" />
+                                <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="{Binding ChartTypeLabel}" />
                                 <ComboBox Margin="0,6,0,0"
                                           Style="{StaticResource FieldComboBoxStyle}"
                                           ItemsSource="{Binding ChartTypes}"
@@ -179,44 +160,75 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="2">
-                                <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="開始日期" />
+                                <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="{Binding StartDateLabel}" />
                                 <DatePicker Margin="0,6,0,0" SelectedDate="{Binding StartDate}" />
                             </StackPanel>
 
                             <StackPanel Grid.Column="4">
-                                <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="開始時間" />
-                                <ComboBox Margin="0,6,0,0"
-                                          Style="{StaticResource FieldComboBoxStyle}"
-                                          ItemsSource="{Binding TimeOptions}"
-                                          SelectedItem="{Binding SelectedStartTime}" />
+                                <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="{Binding StartTimeLabel}" />
+                                <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                                    <ComboBox Width="55"
+                                              Style="{StaticResource FieldComboBoxStyle}"
+                                              ItemsSource="{Binding HourOptions}"
+                                              SelectedItem="{Binding SelectedStartHour}" />
+                                    <TextBlock Margin="4,8,4,0" Foreground="#FF94A3B8" Text=":" />
+                                    <ComboBox Width="55"
+                                              Style="{StaticResource FieldComboBoxStyle}"
+                                              ItemsSource="{Binding MinuteSecondOptions}"
+                                              SelectedItem="{Binding SelectedStartMinute}" />
+                                    <TextBlock Margin="4,8,4,0" Foreground="#FF94A3B8" Text=":" />
+                                    <ComboBox Width="55"
+                                              Style="{StaticResource FieldComboBoxStyle}"
+                                              ItemsSource="{Binding MinuteSecondOptions}"
+                                              SelectedItem="{Binding SelectedStartSecond}" />
+                                </StackPanel>
                             </StackPanel>
 
                             <StackPanel Grid.Column="6">
-                                <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="結束日期" />
+                                <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="{Binding EndDateLabel}" />
                                 <DatePicker Margin="0,6,0,0" SelectedDate="{Binding EndDate}" />
                             </StackPanel>
 
                             <StackPanel Grid.Column="8">
-                                <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="結束時間" />
-                                <ComboBox Margin="0,6,0,0"
-                                          Style="{StaticResource FieldComboBoxStyle}"
-                                          ItemsSource="{Binding TimeOptions}"
-                                          SelectedItem="{Binding SelectedEndTime}" />
+                                <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="{Binding EndTimeLabel}" />
+                                <StackPanel Margin="0,6,0,0" Orientation="Horizontal" Width="200">
+                                    <ComboBox Width="55"
+                                              Style="{StaticResource FieldComboBoxStyle}"
+                                              ItemsSource="{Binding HourOptions}"
+                                              SelectedItem="{Binding SelectedEndHour}" />
+                                    <TextBlock Margin="4,8,4,0" Foreground="#FF94A3B8" Text=":" />
+                                    <ComboBox Width="55"
+                                              Style="{StaticResource FieldComboBoxStyle}"
+                                              ItemsSource="{Binding MinuteSecondOptions}"
+                                              SelectedItem="{Binding SelectedEndMinute}" />
+                                    <TextBlock Margin="4,8,4,0" Foreground="#FF94A3B8" Text=":" />
+                                    <ComboBox Width="55"
+                                              Style="{StaticResource FieldComboBoxStyle}"
+                                              ItemsSource="{Binding MinuteSecondOptions}"
+                                              SelectedItem="{Binding SelectedEndSecond}" />
+                                </StackPanel>
                             </StackPanel>
 
-                            <Button Grid.Column="10"
-                                    Height="38"
-                                    Margin="0,20,0,0"
-                                    Style="{StaticResource SecondaryButtonStyle}"
-                                    Command="{Binding RefreshChartCommand}"
-                                    Content="查詢曲線" />
-
-                             <Button Grid.Column="12"
-                                     Height="38"
-                                     Margin="0,20,0,0"
-                                     Style="{StaticResource PrimaryButtonStyle}"
-                                     Command="{Binding ReturnToLiveChartCommand}"
-                                     Content="返回實時" />
+                            <StackPanel Grid.Column="10" Margin="-30,20,-200,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource SecondaryButtonStyle}"
+                                            Command="{Binding RefreshChartCommand}"
+                                            Content="{Binding QueryChartText}" HorizontalAlignment="Left" />
+                                    <Button Margin="5,0,0,0"
+                                            Style="{StaticResource PrimaryButtonStyle}"
+                                            Command="{Binding ReturnToLiveChartCommand}"
+                                            Content="{Binding ReturnToLiveText}" Cursor="Hand" HorizontalAlignment="Left" MinWidth="128"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0" Width="349">
+                                    <Button Style="{StaticResource SecondaryButtonStyle}"
+                                            Click="ExportCsvButton_OnClick"
+                                            Content="{Binding ExportCsvText}" HorizontalAlignment="Left" />
+                                    <Button Margin="5,0,0,0"
+                                            Style="{StaticResource DangerButtonStyle}"
+                                            Command="{Binding ClearHistoryCommand}"
+                                            Content="{Binding ClearHistoryText}" HorizontalAlignment="Left" MinWidth="128" />
+                                </StackPanel>
+                            </StackPanel>
                         </Grid>
 
                         <StackPanel Grid.Row="1" Margin="0,10,0,8">
@@ -224,73 +236,202 @@
                                        FontSize="12"
                                        TextWrapping="Wrap"
                                        Text="{Binding ChartSummary}" />
-                            <ItemsControl Margin="0,6,0,0"
-                                          ItemsSource="{Binding TemperatureLegendItems}">
-                                <ItemsControl.Style>
-                                    <Style TargetType="ItemsControl">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedChartType}" Value="Temperature">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ItemsControl.Style>
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type viewModels:TemperatureLegendItemViewModel}">
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,10,4" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Name}" Foreground="#FF475569" FontSize="11" VerticalAlignment="Center" />
-                                            <Grid Width="24" Height="12" Margin="6,0,0,0" VerticalAlignment="Center" ToolTip="{Binding Name}">
-                                                <Line X1="1" Y1="6" X2="23" Y2="6" Stroke="{Binding Stroke}" StrokeThickness="2" />
-                                                <Path Width="8"
-                                                      Height="8"
-                                                      Data="{Binding MarkerGeometry}"
-                                                      Stretch="Fill"
-                                                      Fill="White"
-                                                      Stroke="{Binding Stroke}"
-                                                      StrokeThickness="1.5"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center" />
-                                            </Grid>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <WrapPanel Margin="0,8,0,0">
+                            <WrapPanel Margin="0,8,0,0" Height="38.5">
                                 <CheckBox VerticalAlignment="Center"
                                           Foreground="#FFD6E1EE"
                                           IsChecked="{Binding UseManualYAxis}"
-                                          Content="固定 Y 軸" />
-                                <TextBlock Margin="14,2,4,0" Foreground="#FF9FB2C8" FontSize="12" Text="最小" />
+                                          Content="{Binding FixedYAxisText}" />
+                                <TextBlock Margin="14,5,4,0" Foreground="#FF9FB2C8" FontSize="12" Text="{Binding MinLabelText}" />
                                 <TextBox Width="90"
+                                         Height="25"
                                          Style="{StaticResource FieldTextBoxStyle}"
-                                         Text="{Binding ManualYAxisMin, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Margin="10,2,4,0" Foreground="#FF9FB2C8" FontSize="12" Text="最大" />
+                                          Padding="8,3"
+                                          Background="#FF0F172A"
+                                          BorderBrush="#FF475569"
+                                          Foreground="#FFE2E8F0"
+                                          CaretBrush="#FFE2E8F0"
+                                          Text="{Binding ManualYAxisMin, StringFormat=F1, UpdateSourceTrigger=LostFocus}" />
+                                <TextBlock Margin="10,5,4,0" Foreground="#FF9FB2C8" FontSize="12" Text="{Binding MaxLabelText}" />
                                 <TextBox Width="90"
+                                         Height="25"
                                          Style="{StaticResource FieldTextBoxStyle}"
-                                         Text="{Binding ManualYAxisMax, UpdateSourceTrigger=PropertyChanged}" />
+                                          Padding="8,3"
+                                          Background="#FF0F172A"
+                                          BorderBrush="#FF475569"
+                                          Foreground="#FFE2E8F0"
+                                          CaretBrush="#FFE2E8F0"
+                                          Text="{Binding ManualYAxisMax, StringFormat=F1, UpdateSourceTrigger=LostFocus}" />
                                 <CheckBox Margin="16,0,0,0"
                                           VerticalAlignment="Center"
                                           Foreground="#FFD6E1EE"
                                           IsChecked="{Binding AutoScaleWhenIdle}"
-                                          Content="滑鼠停止時自動縮放" />
+                                          Content="{Binding AutoScaleWhenIdleText}" />
+                                <Button Margin="16,0,0,0"
+                                        Height="28"
+                                        Padding="10,2"
+                                        Style="{StaticResource SecondaryButtonStyle}"
+                                        Click="ExportLimitsButton_OnClick"
+                                        Content="{Binding ExportLimitSettingText}" />
                             </WrapPanel>
                         </StackPanel>
 
                         <Border Grid.Row="2"
-                                Padding="12"
-                                Background="#FFF4F5F7"
-                                BorderBrush="#FFE2E8F0"
+                                Padding="18"
+                                Background="#FF020617"
+                                BorderBrush="#1E90A4C2"
                                 BorderThickness="1"
-                                CornerRadius="12">
-                            <ContentControl x:Name="TrendChartHost"
-                                            PreviewMouseMove="ChartCanvas_OnMouseMove"
-                                            MouseLeave="ChartCanvas_OnMouseLeave" />
+                                CornerRadius="18">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="14" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel>
+                                        <TextBlock FontSize="22"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#FFF8FAFC"
+                                                   Text="{Binding ChartTitle}" />
+                                        <TextBlock Margin="0,4,0,0"
+                                                   Foreground="#FF94A3B8"
+                                                   FontSize="12"
+                                                   Text="{Binding ChartWindowText}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                        <Border Padding="12,6"
+                                                 CornerRadius="999"
+                                                 Background="{Binding ChartAccentGlowBrush}"
+                                                 BorderBrush="{Binding ChartAccentSoftBrush}"
+                                                 BorderThickness="1">
+                                            <TextBlock Foreground="{Binding ChartAccentBrush}"
+                                                        FontWeight="SemiBold"
+                                                        FontSize="12"
+                                                        Text="{Binding ChartModeText}" />
+                                        </Border>
+                                        <TextBlock Margin="0,8,0,0"
+                                                    HorizontalAlignment="Right"
+                                                    Foreground="#FF94A3B8"
+                                                    FontSize="11"
+                                                    Text="{Binding ChartMetricText}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Grid.Row="2">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="14" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="10" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <UniformGrid Columns="2">
+                                        <Border Margin="0,0,10,0"
+                                                Padding="14"
+                                                CornerRadius="14"
+                                                Background="#0F1E293B"
+                                                BorderBrush="{Binding ChartAccentSoftBrush}"
+                                                BorderThickness="1">
+                                            <StackPanel>
+                                                <TextBlock Foreground="#FF94A3B8" FontSize="11" Text="{Binding LatestSampleLabel}" />
+                                                <TextBlock Margin="0,6,0,0"
+                                                           Foreground="#FFF8FAFC"
+                                                           FontSize="15"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding LatestSampleText}" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Margin="0,0,10,0"
+                                                Padding="14"
+                                                CornerRadius="14"
+                                                Background="#0F1E293B"
+                                                BorderBrush="{Binding ChartAccentSoftBrush}"
+                                                BorderThickness="1">
+                                            <StackPanel>
+                                                <TextBlock Foreground="#FF94A3B8" FontSize="11" Text="{Binding ValueRangeLabel}" />
+                                                <TextBlock Margin="0,6,0,0"
+                                                           Foreground="#FFF8FAFC"
+                                                           FontSize="15"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding ValueRangeText}" />
+                                            </StackPanel>
+                                        </Border>
+
+                                    </UniformGrid>
+
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Ellipse Width="8"
+                                                 Height="8"
+                                                 Fill="{Binding ChartAccentBrush}"
+                                                 Margin="0,0,8,0" />
+                                        <TextBlock Foreground="#FF94A3B8"
+                                                   FontSize="11"
+                                                   Text="{Binding ChartHintText}" />
+                                    </StackPanel>
+
+                                    <Border Grid.Row="2"
+                                            Padding="10"
+                                            Background="#660B1220"
+                                            BorderBrush="#222E3A4D"
+                                            BorderThickness="1"
+                                            CornerRadius="16">
+                                        <ContentControl x:Name="TrendChartHost"
+                                                        PreviewMouseMove="ChartCanvas_OnMouseMove"
+                                                        MouseLeave="ChartCanvas_OnMouseLeave" />
+                                    </Border>
+
+                                    <Border Grid.Row="4"
+                                            Padding="10,8"
+                                            Background="#0F1E293B"
+                                            BorderBrush="#1E90A4C2"
+                                            BorderThickness="1"
+                                            CornerRadius="10">
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <TextBlock DockPanel.Dock="Left"
+                                                           Foreground="#FFE2E8F0"
+                                                           FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding AnalysisPanelTitleText}" />
+                                                <Button DockPanel.Dock="Right"
+                                                        Height="26"
+                                                        MinWidth="86"
+                                                        Margin="10,0,0,0"
+                                                        Padding="8,2"
+                                                        Style="{StaticResource SecondaryButtonStyle}"
+                                                        Command="{Binding AnalyzeNowCommand}"
+                                                        Content="{Binding AnalyzeNowText}" />
+                                            </DockPanel>
+                                            <TextBlock Margin="0,4,0,0"
+                                                       Foreground="#FF94A3B8"
+                                                       FontSize="11"
+                                                       Text="{Binding AnalysisStatusText}" />
+                                            <TextBox Margin="0,4,0,0"
+                                                     MaxHeight="120"
+                                                     IsReadOnly="True"
+                                                     AcceptsReturn="True"
+                                                     TextWrapping="Wrap"
+                                                     VerticalScrollBarVisibility="Auto"
+                                                     HorizontalScrollBarVisibility="Disabled"
+                                                     Background="Transparent"
+                                                     BorderThickness="0"
+                                                     Foreground="#FFD6E1EE"
+                                                     FontSize="11"
+                                                     Text="{Binding AnalysisResult, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Grid>
                         </Border>
                     </Grid>
                 </Border>

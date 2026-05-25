@@ -8,8 +8,10 @@ namespace Datarecord.Models
 
         public double Speed { get; set; }
 
+        public double Length { get; set; }
+
         public double Diameter { get; set; }
 
-        public double[] TemperatureZones { get; set; } = new double[8];
+        public double Tension { get; set; }
     }
 }

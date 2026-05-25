@@ -21,6 +21,7 @@ namespace Datarecord
         private readonly IPlcIntegrationService _plcIntegrationService;
         private readonly IMachineMonitoringService _machineMonitoringService;
         private readonly IMachineStorageService _machineStorageService;
+        private readonly IProductionReportService _productionReportService;
         private double _lastValidViewportWidth;
 
         public MainWindow()
@@ -30,8 +31,9 @@ namespace Datarecord
             var jsonStorageService = new JsonLayoutStorageService();
             _mySqlSettingsService = new MySqlSettingsService();
             _machineStorageService = new MySqlMachineStorageService(_mySqlSettingsService, jsonStorageService);
+            _productionReportService = new MySqlProductionReportService(_mySqlSettingsService);
             _plcIntegrationService = new PlcIntegrationService();
-            _machineMonitoringService = new MachineMonitoringService(_plcIntegrationService, _machineStorageService, Dispatcher);
+            _machineMonitoringService = new MachineMonitoringService(_plcIntegrationService, _machineStorageService, _productionReportService, Dispatcher);
             DataContext = new MainWindowViewModel(_machineStorageService);
             _machineMonitoringService.Attach(ViewModel.Machines);
 
@@ -145,8 +147,28 @@ namespace Datarecord
 
             if (window.ShowDialog() == true)
             {
-                ViewModel.StatusText = "資料庫設定已更新。";
+                ViewModel.StatusText = "Database settings updated.";
             }
+        }
+
+        public void ClearAllMachineTrendHistoryInMemory()
+        {
+            foreach (var machine in ViewModel.Machines)
+            {
+                machine.TrendRecords.Clear();
+            }
+
+            ViewModel.StatusText = "All machine trend history has been cleared in memory.";
+        }
+
+        private void ReportButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var reportWindow = new ReportWindow(ViewModel.Machines, _productionReportService)
+            {
+                Owner = this
+            };
+
+            reportWindow.ShowDialog();
         }
 
         private void DesignSurface_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -215,19 +237,23 @@ namespace Datarecord
         {
             ViewModel.SelectMachine(machine);
 
-            var detailWindow = new MachineDetailWindow(machine, _machineMonitoringService)
+            var detailWindow = new MachineDetailWindow(
+                machine,
+                _machineMonitoringService,
+                _machineStorageService,
+                _productionReportService)
             {
                 Owner = this
             };
 
             detailWindow.ShowDialog();
-            SaveLayoutInBackground("已在背景儲存機台設定。");
+            SaveLayoutInBackground("Machine settings were saved in the background.");
         }
 
         private void SaveLayoutInBackground(string successStatusText)
         {
             var snapshot = ViewModel.Machines.Select(x => x.ToModel()).ToList();
-            ViewModel.StatusText = "正在背景儲存機台設定…";
+            ViewModel.StatusText = "Saving machine settings in the background...";
 
             _ = Task.Run(() =>
             {
@@ -238,7 +264,7 @@ namespace Datarecord
                 }
                 catch
                 {
-                    _ = Dispatcher.InvokeAsync(() => ViewModel.StatusText = "背景儲存失敗，請稍後再試。");
+                    _ = Dispatcher.InvokeAsync(() => ViewModel.StatusText = "Background save failed. Please try again later.");
                 }
             });
         }

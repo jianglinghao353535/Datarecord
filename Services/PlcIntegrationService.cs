@@ -28,6 +28,7 @@ namespace Datarecord.Services
             {
                 PlcType.SiemensS7 => ReadSiemensValuesAsync(machine, cancellationToken),
                 PlcType.DeltaModbusTcp => ReadDeltaValuesAsync(machine, cancellationToken),
+                PlcType.InovanceModbusTcp => ReadDeltaValuesAsync(machine, cancellationToken),
                 _ => Task.FromResult(new PlcRealtimeSnapshotModel())
             };
         }
@@ -51,13 +52,11 @@ namespace Datarecord.Services
                     snapshot.ProductionSpeed = ReadSiemensDouble(plc, machine.PlcAddressProductionSpeed);
                     snapshot.ProductionLength = ReadSiemensDouble(plc, machine.PlcAddressProductionLength);
                     snapshot.ProductionWeight = ReadSiemensDouble(plc, machine.PlcAddressProductionWeight);
+                    snapshot.ReportWeight = string.IsNullOrWhiteSpace(machine.PlcAddressWeight)
+                        ? snapshot.ProductionWeight
+                        : ReadSiemensDouble(plc, machine.PlcAddressWeight);
                     snapshot.CurrentDiameter = ReadSiemensDouble(plc, machine.PlcAddressDiameter);
-                    snapshot.ProductionStatus = ReadStatusText(ReadSiemensDouble(plc, machine.PlcAddressProductionStatus));
-
-                    for (var i = 0; i < snapshot.Temperatures.Length && i < machine.PlcAddressTemperatureZones.Length; i++)
-                    {
-                        snapshot.Temperatures[i] = ReadSiemensDouble(plc, machine.PlcAddressTemperatureZones[i]);
-                    }
+                    snapshot.IsRunningSignalOn = ReadSiemensBool(plc, machine.PlcAddressRuningSignal);
 
                     plc.Close();
                     return snapshot;
@@ -65,7 +64,7 @@ namespace Datarecord.Services
             }
             catch (TimeoutException ex)
             {
-                throw new TimeoutException($"西門子 PLC 連線或讀取逾時：{machine.IpAddress}:{machine.Port}", ex);
+                throw new TimeoutException($"Siemens PLC read timeout: {machine.IpAddress}:{machine.Port}", ex);
             }
         }
 
@@ -77,7 +76,7 @@ namespace Datarecord.Services
             }
             catch (TimeoutException ex)
             {
-                throw new TimeoutException($"台達 PLC 連線或讀取逾時：{machine.IpAddress}:{machine.Port}", ex);
+                throw new TimeoutException($"Delta/Inovance PLC read timeout: {machine.IpAddress}:{machine.Port}", ex);
             }
         }
 
@@ -93,7 +92,7 @@ namespace Datarecord.Services
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                throw new TimeoutException($"連線 PLC 逾時：{machine.IpAddress}:{machine.Port}");
+                throw new TimeoutException($"PLC connection timeout: {machine.IpAddress}:{machine.Port}");
             }
 
             tcpClient.ReceiveTimeout = DeltaIoTimeoutMs;
@@ -107,17 +106,15 @@ namespace Datarecord.Services
 
             var snapshot = new PlcRealtimeSnapshotModel
             {
-                ProductionSpeed = ReadDeltaNumeric(stream, ref transactionId, machine.PlcAddressProductionSpeed),
-                ProductionLength = ReadDeltaNumeric(stream, ref transactionId, machine.PlcAddressProductionLength),
-                ProductionWeight = ReadDeltaNumeric(stream, ref transactionId, machine.PlcAddressProductionWeight),
-                CurrentDiameter = ReadDeltaNumeric(stream, ref transactionId, machine.PlcAddressDiameter),
-                ProductionStatus = ReadDeltaStatus(stream, ref transactionId, machine.PlcAddressProductionStatus)
+                ProductionSpeed = ReadDeltaRealNumeric(stream, ref transactionId, machine.PlcAddressProductionSpeed),
+                ProductionLength = ReadDeltaRealNumeric(stream, ref transactionId, machine.PlcAddressProductionLength),
+                ProductionWeight = ReadDeltaRealNumeric(stream, ref transactionId, machine.PlcAddressProductionWeight),
+                ReportWeight = string.IsNullOrWhiteSpace(machine.PlcAddressWeight)
+                    ? ReadDeltaRealNumeric(stream, ref transactionId, machine.PlcAddressProductionWeight)
+                    : ReadDeltaRealNumeric(stream, ref transactionId, machine.PlcAddressWeight),
+                CurrentDiameter = ReadDeltaRealNumeric(stream, ref transactionId, machine.PlcAddressDiameter),
+                IsRunningSignalOn = ReadDeltaBoolSignal(stream, ref transactionId, machine.PlcAddressRuningSignal)
             };
-
-            for (var i = 0; i < snapshot.Temperatures.Length && i < machine.PlcAddressTemperatureZones.Length; i++)
-            {
-                snapshot.Temperatures[i] = ReadDeltaNumeric(stream, ref transactionId, machine.PlcAddressTemperatureZones[i]);
-            }
 
             return snapshot;
         }
@@ -136,11 +133,11 @@ namespace Datarecord.Services
             }
             catch (InvalidAddressException)
             {
-                throw new InvalidAddressException($"PLC 位址格式無效：{address}（轉換後：{normalizedAddress}）");
+                throw new InvalidAddressException($"Invalid PLC address format: {address}. Normalized: {normalizedAddress}.");
             }
             catch (PlcException ex) when (ex.Message.Contains("Address out of range", StringComparison.OrdinalIgnoreCase))
             {
-                throw new IOException($"PLC 位址超出範圍：{address}（轉換後：{normalizedAddress}）。請確認此位址是否存在於 PLC 的正確記憶體區域。", ex);
+                throw new IOException($"PLC address is out of range: {address}. Normalized: {normalizedAddress}. Please verify the PLC memory area.", ex);
             }
         }
 
@@ -186,6 +183,12 @@ namespace Datarecord.Services
 
             var value = ReadSiemensValue(plc, address);
             return ConvertToDouble(value);
+        }
+
+        private static bool ReadSiemensBool(Plc plc, string address)
+        {
+            var value = ReadSiemensValue(plc, address);
+            return ConvertToBool(value);
         }
 
         private static bool TryReadSiemensFloat(Plc plc, string address, out double value)
@@ -268,7 +271,7 @@ namespace Datarecord.Services
         {
             if (value is bool boolValue)
             {
-                return boolValue ? "運行中" : "待機";
+                return boolValue ? "Running" : "Idle";
             }
 
             if (value is string stringValue && !string.IsNullOrWhiteSpace(stringValue))
@@ -280,11 +283,32 @@ namespace Datarecord.Services
             var rounded = (int)Math.Round(number);
             return rounded switch
             {
-                0 => "待機",
-                1 => "運行中",
-                2 => "警報",
-                3 => "停機",
+                0 => "Idle",
+                1 => "Running",
+                2 => "Alarm",
+                3 => "Stopped",
                 _ => rounded.ToString(CultureInfo.InvariantCulture)
+            };
+        }
+
+        private static bool ConvertToBool(object? value)
+        {
+            return value switch
+            {
+                null => false,
+                bool boolValue => boolValue,
+                byte byteValue => byteValue != 0,
+                short shortValue => shortValue != 0,
+                ushort ushortValue => ushortValue != 0,
+                int intValue => intValue != 0,
+                uint uintValue => uintValue != 0,
+                long longValue => longValue != 0,
+                float floatValue => Math.Abs(floatValue) > float.Epsilon,
+                double doubleValue => Math.Abs(doubleValue) > double.Epsilon,
+                decimal decimalValue => decimalValue != 0,
+                _ when bool.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), out var parsedBool) => parsedBool,
+                _ when double.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedNumber) => Math.Abs(parsedNumber) > double.Epsilon,
+                _ => false
             };
         }
 
@@ -308,7 +332,7 @@ namespace Datarecord.Services
             };
         }
 
-        private static double ReadDeltaNumeric(NetworkStream stream, ref int transactionId, string address)
+        private static double ReadDeltaNumeric(NetworkStream stream, ref int transactionId, string address, double minExpected, double maxExpected)
         {
             if (string.IsNullOrWhiteSpace(address))
             {
@@ -333,20 +357,186 @@ namespace Datarecord.Services
                 return 0;
             }
 
-            var bytesSwap = new[]
+            return DecodeBestModbusNumeric(registers[0], registers[1], minExpected, maxExpected);
+        }
+
+        private static double ReadDeltaIntegerNumeric(NetworkStream stream, ref int transactionId, string address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
             {
-                (byte)(registers[1] >> 8),
-                (byte)registers[1],
-                (byte)(registers[0] >> 8),
-                (byte)registers[0]
-            };
-            var floatSwap = BitConverter.ToSingle(bytesSwap, 0);
-            if (float.IsFinite(floatSwap) && Math.Abs(floatSwap) <= 1_000_000)
-            {
-                return floatSwap;
+                return 0;
             }
 
-            return registers[0];
+            var trimmed = address.Trim().ToUpperInvariant();
+            if (trimmed.StartsWith("M", StringComparison.Ordinal))
+            {
+                return ReadDeltaCoil(stream, ref transactionId, ParseAddressNumber(trimmed, 1)) ? 1 : 0;
+            }
+
+            if (!trimmed.StartsWith("D", StringComparison.Ordinal))
+            {
+                return 0;
+            }
+
+            var startAddress = ParseAddressNumber(trimmed, 1);
+            var registers = ReadHoldingRegisters(stream, ref transactionId, startAddress, 2);
+            if (registers.Length < 2)
+            {
+                return 0;
+            }
+
+            var value = unchecked((int)(((uint)registers[1] << 16) | registers[0]));
+            return value;
+        }
+
+        private static double ReadDeltaRealNumeric(NetworkStream stream, ref int transactionId, string address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+            {
+                return 0;
+            }
+
+            var trimmed = address.Trim().ToUpperInvariant();
+            if (trimmed.StartsWith("M", StringComparison.Ordinal))
+            {
+                return ReadDeltaCoil(stream, ref transactionId, ParseAddressNumber(trimmed, 1)) ? 1 : 0;
+            }
+
+            if (!trimmed.StartsWith("D", StringComparison.Ordinal))
+            {
+                return 0;
+            }
+
+            var startAddress = ParseAddressNumber(trimmed, 1);
+            var registers = ReadHoldingRegisters(stream, ref transactionId, startAddress, 2);
+            if (registers.Length < 2)
+            {
+                return 0;
+            }
+
+            var a = (byte)(registers[0] >> 8);
+            var b = (byte)registers[0];
+            var c = (byte)(registers[1] >> 8);
+            var d = (byte)registers[1];
+            var value = ToSingleFromBytes(b, a, d, c);
+            return double.IsFinite(value) ? value : 0;
+        }
+
+        private static double ReadDeltaAdaptiveNumeric(NetworkStream stream, ref int transactionId, string address, double minExpected, double maxExpected, double integerScale = 1.0)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+            {
+                return 0;
+            }
+
+            var trimmed = address.Trim().ToUpperInvariant();
+            if (trimmed.StartsWith("M", StringComparison.Ordinal))
+            {
+                return ReadDeltaCoil(stream, ref transactionId, ParseAddressNumber(trimmed, 1)) ? 1 : 0;
+            }
+
+            if (!trimmed.StartsWith("D", StringComparison.Ordinal))
+            {
+                return 0;
+            }
+
+            var startAddress = ParseAddressNumber(trimmed, 1);
+            var registers = ReadHoldingRegisters(stream, ref transactionId, startAddress, 2);
+            if (registers.Length < 2)
+            {
+                return 0;
+            }
+
+            if (TryDecodeIntegerCandidate(registers[0], registers[1], minExpected, maxExpected, integerScale, out var integerDecoded))
+            {
+                return integerDecoded;
+            }
+
+            var a = (byte)(registers[0] >> 8);
+            var b = (byte)registers[0];
+            var c = (byte)(registers[1] >> 8);
+            var d = (byte)registers[1];
+            var candidates = new[]
+            {
+                ToSingleFromBytes(d, c, b, a),
+                ToSingleFromBytes(b, a, d, c),
+                ToSingleFromBytes(c, d, a, b),
+                ToSingleFromBytes(a, b, c, d)
+            };
+
+            foreach (var candidate in candidates)
+            {
+                if (!double.IsFinite(candidate))
+                {
+                    continue;
+                }
+
+                if (candidate >= minExpected && candidate <= maxExpected)
+                {
+                    return candidate;
+                }
+            }
+
+            var rawFallback = unchecked((int)(((uint)registers[1] << 16) | registers[0]));
+            return Math.Abs(integerScale) > double.Epsilon ? rawFallback / integerScale : rawFallback;
+        }
+
+        private static bool TryDecodeIntegerCandidate(ushort lowWord, ushort highWord, double minExpected, double maxExpected, double integerScale, out double decoded)
+        {
+            decoded = 0;
+
+            var rawCandidates = new[]
+            {
+                unchecked((int)(((uint)highWord << 16) | lowWord)),
+                unchecked((int)(((uint)lowWord << 16) | highWord))
+            };
+
+            foreach (var raw in rawCandidates)
+            {
+                if (TrySelectScaledInteger(raw, minExpected, maxExpected, integerScale, out decoded))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TrySelectScaledInteger(int rawValue, double minExpected, double maxExpected, double integerScale, out double scaled)
+        {
+            scaled = 0;
+
+            var safeScale = Math.Abs(integerScale) > double.Epsilon ? integerScale : 1.0;
+            var baseValue = rawValue / safeScale;
+            if (double.IsFinite(baseValue) && baseValue >= minExpected && baseValue <= maxExpected)
+            {
+                scaled = baseValue;
+                return true;
+            }
+
+            var normalized = Math.Abs(baseValue);
+            if (normalized < 1e-12)
+            {
+                return false;
+            }
+
+            var divisors = new[] { 10d, 100d, 1000d, 10000d };
+            foreach (var divisor in divisors)
+            {
+                var candidate = baseValue / divisor;
+                if (!double.IsFinite(candidate))
+                {
+                    continue;
+                }
+
+                if (candidate >= minExpected && candidate <= maxExpected)
+                {
+                    scaled = candidate;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static string ReadDeltaStatus(NetworkStream stream, ref int transactionId, string address)
@@ -362,7 +552,7 @@ namespace Datarecord.Services
                 return ReadDeltaCoil(stream, ref transactionId, ParseAddressNumber(trimmed, 1)) ? "運行中" : "待機";
             }
 
-            var value = (int)Math.Round(ReadDeltaNumeric(stream, ref transactionId, address));
+            var value = (int)Math.Round(ReadDeltaIntegerNumeric(stream, ref transactionId, address));
             return value switch
             {
                 0 => "待機",
@@ -402,6 +592,27 @@ namespace Datarecord.Services
 
             var response = ReadModbusResponse(stream);
             return response.Length >= 10 && response[9] > 0;
+        }
+
+        private static bool ReadDeltaBoolSignal(NetworkStream stream, ref int transactionId, string address)
+        {
+            if (string.IsNullOrWhiteSpace(address))
+            {
+                return false;
+            }
+
+            var trimmed = address.Trim().ToUpperInvariant();
+            if (trimmed.StartsWith("M", StringComparison.Ordinal))
+            {
+                return ReadDeltaCoil(stream, ref transactionId, ParseAddressNumber(trimmed, 1));
+            }
+
+            if (trimmed.StartsWith("D", StringComparison.Ordinal))
+            {
+                return Math.Abs(ReadDeltaIntegerNumeric(stream, ref transactionId, trimmed)) > double.Epsilon;
+            }
+
+            return false;
         }
 
         private static byte[] BuildModbusRequest(ref int transactionId, byte functionCode, ushort startAddress, ushort quantity)
@@ -452,6 +663,43 @@ namespace Datarecord.Services
             return ushort.TryParse(numericPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
                 ? parsed
                 : (ushort)0;
+        }
+
+        private static double DecodeBestModbusNumeric(ushort register0, ushort register1, double minExpected, double maxExpected)
+        {
+            var a = (byte)(register0 >> 8);
+            var b = (byte)register0;
+            var c = (byte)(register1 >> 8);
+            var d = (byte)register1;
+
+            var candidates = new[]
+            {
+                ToSingleFromBytes(d, c, b, a), // ABCD
+                ToSingleFromBytes(b, a, d, c), // CDAB (word swap)
+                ToSingleFromBytes(c, d, a, b), // BADC
+                ToSingleFromBytes(a, b, c, d)  // DCBA
+            };
+
+            foreach (var candidate in candidates)
+            {
+                if (double.IsFinite(candidate) && candidate >= minExpected && candidate <= maxExpected)
+                {
+                    return candidate;
+                }
+            }
+
+            var firstFinite = candidates.FirstOrDefault(x => double.IsFinite(x));
+            if (double.IsFinite(firstFinite) && Math.Abs(firstFinite) <= 1_000_000_000)
+            {
+                return firstFinite;
+            }
+
+            return register0;
+        }
+
+        private static float ToSingleFromBytes(byte b0, byte b1, byte b2, byte b3)
+        {
+            return BitConverter.ToSingle(new[] { b0, b1, b2, b3 }, 0);
         }
 
         private static async Task EnsureSiemensPortReachableAsync(string ipAddress, int port, TimeSpan timeout, CancellationToken cancellationToken)

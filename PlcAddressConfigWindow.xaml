@@ -1,12 +1,11 @@
 <Window x:Class="Datarecord.PlcAddressConfigWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:viewModels="clr-namespace:Datarecord.ViewModels"
-        Title="PLC 變數位址設定"
+        Title="PLC Address Configuration"
         Width="620"
-        Height="760"
+        Height="560"
         MinWidth="560"
-        MinHeight="620"
+        MinHeight="460"
         Background="#FF0F172A"
         WindowStartupLocation="CenterOwner">
     <Grid Margin="14">
@@ -25,7 +24,7 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Foreground="#FFE2E8F0" FontSize="20" FontWeight="SemiBold" Text="PLC 變數位址設定" />
+                    <TextBlock Foreground="#FFE2E8F0" FontSize="20" FontWeight="SemiBold" Text="PLC Address Configuration" />
                     <TextBlock Margin="0,6,0,0"
                                Foreground="#FF94A3B8"
                                FontSize="12"
@@ -35,38 +34,23 @@
 
                 <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="速度位址" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="Speed Address" />
                         <TextBox Margin="0,4,0,8" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding PlcAddressProductionSpeed, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="長度位址" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="Length Address" />
                         <TextBox Margin="0,4,0,8" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding PlcAddressProductionLength, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="重量位址" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="Tension Address" />
                         <TextBox Margin="0,4,0,8" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding PlcAddressProductionWeight, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="狀態位址" />
-                        <TextBox Margin="0,4,0,8" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding PlcAddressProductionStatus, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="Weight Address" />
+                        <TextBox Margin="0,4,0,8" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding PlcAddressWeight, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="線徑位址" />
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="Diameter Address" />
                         <TextBox Margin="0,4,0,10" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding PlcAddressDiameter, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Foreground="#FFE2E8F0" FontSize="15" FontWeight="SemiBold" Text="溫區位址" />
-                        <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding PlcTemperatureAddresses}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type viewModels:PlcTemperatureAddressViewModel}">
-                                    <DockPanel Margin="0,0,0,6" LastChildFill="True">
-                                        <TextBlock Width="66"
-                                                   VerticalAlignment="Center"
-                                                   Foreground="#FFCBD5E1"
-                                                   FontSize="12"
-                                                   Text="{Binding ZoneName}" />
-                                        <TextBox Margin="8,0,0,0"
-                                                 Style="{StaticResource FieldTextBoxStyle}"
-                                                 Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" />
-                                    </DockPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <TextBlock Foreground="#FF94A3B8" FontSize="12" Text="RuningSignal Address (M)" />
+                        <TextBox Margin="0,4,0,10" Style="{StaticResource FieldTextBoxStyle}" Text="{Binding PlcAddressRuningSignal, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
                 </ScrollViewer>
 
@@ -76,12 +60,12 @@
                             Margin="0,0,8,0"
                             Style="{StaticResource SecondaryButtonStyle}"
                             Click="CancelButton_OnClick"
-                            Content="關閉" />
+                            Content="Close" />
                     <Button Width="100"
                             Height="36"
                             Style="{StaticResource PrimaryButtonStyle}"
                             Click="ConfirmButton_OnClick"
-                            Content="完成" />
+                            Content="Done" />
                 </StackPanel>
             </Grid>
         </Border>
